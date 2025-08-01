@@ -2,7 +2,7 @@
 
 The deployed version of the EventEase application can be viewed <a href="https://dev.dotnetmurf.net/BlazorFinalProject/" target="_blank">here</a>.
 
-Note: This course is one of twelve course required for obtaining the <a href="https://www.coursera.org/professional-certificates/microsoft-full-stack-developer" target="_blank">"Microsoft Full-Stack Developer Professional Certificate"</a>.
+Note: This course is one of twelve courses required for obtaining the <a href="https://www.coursera.org/professional-certificates/microsoft-full-stack-developer" target="_blank">"Microsoft Full-Stack Developer Professional Certificate"</a>.
 
 ## Project Overview
 
