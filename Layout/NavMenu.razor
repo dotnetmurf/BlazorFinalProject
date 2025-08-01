@@ -1,0 +1,89 @@
+﻿@*
+    NavMenu Component
+    
+    Purpose: Provides the primary navigation menu for the EventEase application with responsive 
+    collapsible sidebar navigation and application branding.
+    
+    Features:
+    - Responsive navigation with collapsible mobile menu
+    - Application branding with logo and title in header
+    - Navigation links to all major application sections
+    - Bootstrap Icons for visual navigation indicators
+    - Active link highlighting with NavLink components
+    - Mobile-friendly hamburger menu toggle
+    - Consistent styling with application color scheme
+    
+    Navigation Structure:
+    - Home: Landing page and dashboard
+    - Events List: Event management and listing page
+    - Attendance: Attendance tracking and reporting
+    - User Manual: Application help and documentation
+    - About: Application information and company details
+    
+    Interactive Elements:
+    - Collapsible menu for mobile responsiveness
+    - Navbar toggler button for menu visibility
+    - Active state indication for current page
+    - Click-to-close behavior on mobile devices
+    
+    Dependencies:
+    - Bootstrap classes for responsive navigation styling
+    - Bootstrap Icons for navigation item indicators
+    - NavLink component for routing and active state management
+    - Application logo: white-clear-icon-32.png
+    
+    Usage: Embedded in MainLayout sidebar to provide consistent navigation across all application pages.
+*@
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="">
+            <img src="images/white-clear-icon-32.png" alt="EventEase Logo" class="logo me-2" />
+            <span>Events Manager</span>
+        </a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="events">
+                <span class="bi bi-calendar2-event-fill-nav-menu" aria-hidden="true"></span> Events List
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="attendance">
+                <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Attendance
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="user-manual">
+                <span class="bi bi-file-earmark-person-fill-nav-menu" aria-hidden="true"></span> User Manual
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="about">
+                <span class="bi bi-info-circle-fill-nav-menu" aria-hidden="true"></span> About
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

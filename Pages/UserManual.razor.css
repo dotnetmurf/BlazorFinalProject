@@ -1,0 +1,41 @@
+/*
+    UserManual Page Styles
+    
+    Purpose: Provides custom styling for the UserManual page component to enhance readability,
+    visual hierarchy, and user interaction with the accordion-based documentation interface.
+    
+    Key Features:
+    - Accordion button styling with active state highlighting
+    - Enhanced card shadows for better visual separation
+    - Badge sizing optimization for consistent labeling
+    - Bootstrap component customizations for professional appearance
+    
+    Accordion Enhancements:
+    - Active accordion buttons with light blue background (#e7f1ff)
+    - Primary color text for expanded sections (#0c63e4)
+    - Visual feedback for section state and user interaction
+    - Consistent with application's primary color scheme
+    
+    Visual Design:
+    - Subtle box shadows (0 2px 4px rgba(0, 0, 0, 0.1)) for depth
+    - Refined badge sizing (0.75em) for better readability
+    - Professional appearance suitable for business documentation
+    - Enhanced visual hierarchy for improved content scanning
+    
+    Usage: Automatically applied to UserManual.razor component to provide enhanced
+    styling for interactive documentation, ensuring optimal readability and professional
+    presentation for user training and support materials.
+*/
+
+    .accordion-button:not(.collapsed) {
+        background-color: #e7f1ff;
+        color: #0c63e4;
+    }
+
+    .card {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .badge {
+        font-size: 0.75em;
+    }

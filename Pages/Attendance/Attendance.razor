@@ -1,0 +1,309 @@
+@*
+    Attendance Page Component
+    
+    Purpose: Provides a comprehensive attendance overview and reporting interface for all events
+    in the EventEase application with detailed statistics and analytics.
+    
+    Features:
+    - Tabular display of all events with attendance metrics
+    - Registration count tracking per event
+    - Actual attendance count tracking per event
+    - Color-coded attendance rate badges (Green ≥80%, Yellow ≥60%, Red <60%)
+    - Summary statistics showing totals across all events
+    - Overall attendance rate calculation
+    - Navigation links to individual event details
+    - Help dialog with detailed feature explanations
+    - Responsive table design for mobile and desktop viewing
+    
+    Data Display:
+    - Event name, date, and location for context
+    - Registration counts with info badges
+    - Attendance counts with success badges
+    - Attendance rates with color-coded performance indicators
+    - Summary panel with aggregate statistics
+    - Direct links to event detail pages for management
+    
+    Statistics Calculations:
+    - Individual event attendance rates (Attendees / Registrations * 100)
+    - Total events count across the application
+    - Total registrations sum across all events
+    - Total attendees sum across all events
+    - Overall attendance rate for all events combined
+    
+    User Interactions:
+    - View Event Details: Navigate to specific event management page
+    - Help System: Contextual help explaining all features and metrics
+    - Create First Event: Quick access to event creation when no data exists
+    - Back to Events: Return to main events listing page
+    
+    Loading States:
+    - Loading spinner during data retrieval
+    - Empty state with call-to-action when no events exist
+    - Error handling for data loading failures
+    
+    Dependencies:
+    - IEventService: Event data retrieval
+    - IRegistrationService: Registration and attendance data
+    - IJSRuntime: Scroll management and DOM interactions
+    - ModalDialog: Help dialog display
+    
+    Usage: Accessed via `/attendance` route to view attendance analytics and performance
+    metrics across all events. Primary reporting interface for event success tracking.
+*@
+
+@page "/attendance"
+@inject IEventService EventService
+@inject IRegistrationService RegistrationService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Event Attendance | Events Manager</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div>
+                    <h1 class="mb-2">
+                        <i class="bi bi-people-fill me-2"></i>Event Attendance Overview
+                    </h1>
+                    <a class="btn btn-secondary btn-sm" href="events">Back to Events</a>
+                </div>
+                <button class="btn btn-outline-dark btn-sm" @onclick="ShowHelp">
+                    <i class="bi bi-question-circle me-1"></i>Help
+                </button>
+            </div>
+
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3">Loading attendance data...</p>
+                </div>
+            }
+            else if (attendanceData?.Any() == true)
+            {
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-calendar-check me-2"></i>Events Summary
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th scope="col" class="ps-3">Event Name</th>
+                                        <th scope="col">Date</th>
+                                        <th scope="col">Location</th>
+                                        <th scope="col" class="text-center">
+                                            <i class="bi bi-person-plus-fill me-1"></i>Registered
+                                        </th>
+                                        <th scope="col" class="text-center">
+                                            <i class="bi bi-person-check-fill me-1"></i>Attended
+                                        </th>
+                                        <th scope="col" class="text-center">Attendance Rate</th>
+                                        <th scope="col" class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in attendanceData)
+                                    {
+                                        <tr>
+                                            <td class="ps-3" data-label="Event Name">
+                                                <strong>@item.Event.Name</strong>
+                                            </td>
+                                            <td data-label="Date">
+                                                <small class="text-muted">
+                                                    @item.Event.Date.ToString("MMM dd, yyyy")
+                                                </small>
+                                            </td>
+                                            <td data-label="Location">
+                                                <small class="text-muted">@item.Event.Location</small>
+                                            </td>
+                                            <td class="text-center" data-label="Registered">
+                                                <span class="badge bg-info text-dark">
+                                                    @item.RegistrationCount
+                                                </span>
+                                            </td>
+                                            <td class="text-center" data-label="Attended">
+                                                <span class="badge bg-success">
+                                                    @item.AttendeeCount
+                                                </span>
+                                            </td>
+                                            <td class="text-center" data-label="Attendance Rate">
+                                                @{
+                                                    var attendanceRate = item.RegistrationCount > 0
+                                                    ? (double)item.AttendeeCount / item.RegistrationCount * 100
+                                                    : 0;
+                                                    var badgeClass = attendanceRate >= 80 ? "bg-success" :
+                                                    attendanceRate >= 60 ? "bg-warning text-dark" : "bg-danger";
+                                                }
+                                                <span class="badge @badgeClass">
+                                                    @attendanceRate.ToString("F1")%
+                                                </span>
+                                            </td>
+                                            <td class="text-center" data-label="Actions">
+                                                <a href="events/details/@item.Event.Id" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-eye me-1"></i>Details
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-light">
+                        <div class="row">
+                            <div class="col-lg-3">
+                                <div class="text-center">
+                                    <h6 class="text-muted mb-1"><strong>Total Events</strong></h6>
+                                    <h6 class="text-primary mb-0"><strong>@attendanceData.Count</strong></h6>
+                                </div>
+                            </div>
+                            <div class="col-lg-3">
+                                <div class="text-center">
+                                    <h6 class="text-muted mb-1"><strong>Total Registrations</strong></h6>
+                                    <h6 class="text-info mb-0"><strong>@attendanceData.Sum(x =>
+                                                                                    x.RegistrationCount)</strong></h6>
+                            </div>
+                        </div>
+                        <div class="col-lg-3">
+                            <div class="text-center">
+                                <h6 class="text-muted mb-1"><strong>Total Attendees</strong></h6>
+                                <h6 class="text-success mb-0"><strong>@attendanceData.Sum(x => x.AttendeeCount)</strong>
+                                </h6>
+                            </div>
+                        </div>
+                        <div class="col-lg-3">
+                            <div class="text-center">
+                                <h6 class="text-muted mb-1"><strong>Overall Rate</strong></h6>
+                                @{
+                                        var totalRegs = attendanceData.Sum(x => x.RegistrationCount);
+                                        var totalAttendees = attendanceData.Sum(x => x.AttendeeCount);
+                                        var overallRate = totalRegs > 0 ? (double)totalAttendees / totalRegs * 100 : 0;
+                                    }
+                                    <h6 class="text-warning mb-0"><strong>@overallRate.ToString("F1")%</strong></h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x display-1 text-muted"></i>
+                    <h4 class="mt-3">No Events Found</h4>
+                    <p class="text-muted">There are no events to display attendance information for.</p>
+                    <a href="events?action=add" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i>Create Your First Event
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<ModalDialog @ref="helpDialog" Title="Help - Attendance Overview" ShowConfirmButton="false" CancelText="Close"
+    OnCancel="CloseHelp">
+    <div class="help-content">
+        <h5><i class="bi bi-info-circle text-info me-2"></i>Attendance Page Functions</h5>
+        <hr />
+        <div class="mb-3">
+            <h6><i class="bi bi-eye text-primary me-2"></i>View Event Details</h6>
+            <p class="text-muted mb-2">Click the "Details" button next to any event to view full event information and
+                manage registrations.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-graph-up text-success me-2"></i>Attendance Rates</h6>
+            <p class="text-muted mb-2">Color-coded badges show attendance rates: <span class="badge bg-success">Green
+                    ≥80%</span> <span class="badge bg-warning text-dark">Yellow ≥60%</span> <span
+                    class="badge bg-danger">Red &lt;60%</span></p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-person-plus-fill text-info me-2"></i>Registration Counts</h6>
+            <p class="text-muted mb-2">Blue badges show the total number of people registered for each event.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-person-check-fill text-success me-2"></i>Attendance Counts</h6>
+            <p class="text-muted mb-2">Green badges show how many registered participants actually attended the event.
+            </p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-bar-chart text-warning me-2"></i>Summary Statistics</h6>
+            <p class="text-muted mb-2">The bottom panel shows totals across all events: total events, registrations,
+                attendees, and overall attendance rate.</p>
+        </div>
+        <div class="mb-0">
+            <h6><i class="bi bi-plus-circle text-primary me-2"></i>Create Events</h6>
+            <p class="text-muted mb-0">If no events exist, click "Create Your First Event" to get started with event
+                management.</p>
+        </div>
+    </div>
+</ModalDialog>
+
+@code {
+    private List<AttendanceItem> attendanceData = new();
+    private bool isLoading = true;
+    private ModalDialog? helpDialog;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAttendanceDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+        }
+    }
+
+    private void ShowHelp()
+    {
+        helpDialog?.Show();
+    }
+
+    private void CloseHelp()
+    {
+        helpDialog?.Hide();
+    }
+
+    private async Task LoadAttendanceDataAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var events = await EventService.GetAllAsync();
+            var allRegistrations = await RegistrationService.GetAllAsync();
+
+            attendanceData = events.Select(evt => new AttendanceItem
+            {
+                Event = evt,
+                RegistrationCount = allRegistrations.Count(r => r.EventId == evt.Id),
+                AttendeeCount = allRegistrations.Count(r => r.EventId == evt.Id && r.AttendedEvent)
+            })
+            .OrderBy(x => x.Event.Name)
+            .ToList();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private class AttendanceItem
+    {
+        public Event Event { get; set; } = new();
+        public int RegistrationCount { get; set; }
+        public int AttendeeCount { get; set; }
+    }
+}

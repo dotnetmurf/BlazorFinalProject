@@ -1,0 +1,73 @@
+﻿@*
+    Home Page Component
+    
+    Purpose: Provides the landing page and introduction for the EventEase application,
+    welcoming users and explaining the application's core purpose and features.
+    
+    Features:
+    - Welcome message and application introduction
+    - Overview of core event management capabilities
+    - Feature highlights including event creation, participant registration, and attendance tracking
+    - Navigation links to User Manual and About pages for additional information
+    - Feedback encouragement and future development messaging
+    - Professional presentation suitable for corporate environment
+    
+    Content Sections:
+    - Introduction: Application purpose and business value proposition
+    - Core Features: Key functionality overview with bulleted capabilities
+    - User Manual Link: Direct access to detailed usage instructions
+    - Feedback Section: Encouragement for user input and continuous improvement
+    - About Page Link: Access to development process and technical details
+    - Moving Forward: Collaborative messaging and user engagement
+    
+    User Experience:
+    - Clean, professional layout appropriate for business users
+    - Clear navigation pathways to key application sections
+    - Informative content that sets proper expectations
+    - Encourages exploration of application features
+    
+    Dependencies:
+    - Navigation links to /user-manual and /about routes
+    - PageTitle component for browser tab display
+    - Standard HTML elements with Bootstrap styling
+    
+    Usage: Accessed via root route "/" as the main entry point for new users.
+    Serves as the primary introduction and orientation to the EventEase application.
+*@
+
+@page "/"
+
+<PageTitle>Home | Events Manager</PageTitle>
+
+<h1 class="mb-4">Welcome to the EventEase Event Manager Application</h1>
+<h2>Introduction</h2>
+<p>
+    Welcome to EventEase—a purpose-built solution designed to simplify and optimize the way employees manage
+    company-sponsored events. By streamlining logistics and empowering teams with an intuitive interface, EventEase
+    supports more effective planning, coordination, and tracking across all stages of event management.
+</P>
+<h2>Core Features</h2>
+<p>
+    The EventEase Event Management application equips employees with a streamlined tool to efficiently manage
+    company-led events. With intuitive features designed to simplify logistics, users can easily create, view, update,
+    or remove details related to:
+<ul>
+    <li>Events managed by the company</li>
+    <li>Participants registered to attend events</li>
+    <li>Event attendance tracking</li>
+</ul>
+</p>
+<p>Learn more about using the application in the <a href="user-manual">User Manual</a>.</p>
+<h2>Feedback And Future Development</h2>
+<p>
+    This is our first release of the application, so your insights matter. We encourage your management team to
+    share observations and recommendations—your front-line experience plays a key role in refining performance, shaping
+    future enhancements, and addressing any issues that emerge.
+</p>
+<p>Get a peek into the application's development process in the <a href="about">About page</a>.</p>
+<h2>Moving Forward Together</h2>
+<p>
+    Together, we’re laying the foundation for a more organized, user-driven approach to event oversight. Your input will
+    help ensure that EventEase continues to evolve into a tool that meets your team's needs with precision and ease.
+    Thanks for being part of this first chapter!
+</p>

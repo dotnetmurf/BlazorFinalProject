@@ -1,0 +1,316 @@
+@inject IRegistrationService RegistrationService
+@inject IHybridRegistrationStateService RegistrationState
+@inject ILogger<RegistrationForm> Logger
+
+<div class="card shadow-lg mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">@FormTitle</h5>
+    </div>
+    <div class="card-body">
+        <EditForm Model="RegistrationState.CurrentRegistrationForm" OnValidSubmit="HandleSubmitAsync">
+            <DataAnnotationsValidator />
+
+            @if (HasValidationErrors)
+            {
+                <div class="alert alert-danger">
+                    <ValidationSummary />
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    @ErrorMessage
+                </div>
+            }
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="attendeeName" class="form-label required">Name</label>
+                        <InputText id="attendeeName" class="form-control"
+                            @bind-Value="RegistrationState.CurrentRegistrationForm.AttendeeName"
+                            @bind-Value:after="MarkAsDirty" placeholder="Enter attendee's full name"
+                            disabled="@IsSubmitting" />
+                        <ValidationMessage For="@(() => RegistrationState.CurrentRegistrationForm.AttendeeName)" />
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="telephone" class="form-label required">
+                            Telephone
+                            <small class="text-muted">(Format: 123-456-7890)</small>
+                        </label>
+                        <InputText id="telephone" class="form-control"
+                            @bind-Value="RegistrationState.CurrentRegistrationForm.Telephone"
+                            @bind-Value:after="MarkAsDirty" placeholder="Please enter a valid telephone number"
+                            disabled="@IsSubmitting" />
+                        <ValidationMessage For="@(() => RegistrationState.CurrentRegistrationForm.Telephone)" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="email" class="form-label required">
+                    Email Address
+                    <small class="text-muted">(Format: user@example.com)</small>
+                </label>
+                <InputText id="email" class="form-control" type="email"
+                    @bind-Value="RegistrationState.CurrentRegistrationForm.EmailAddress" @bind-Value:after="MarkAsDirty"
+                    placeholder="Please enter a valid email address" disabled="@IsSubmitting" />
+                <ValidationMessage For="@(() => RegistrationState.CurrentRegistrationForm.EmailAddress)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <InputTextArea id="notes" class="form-control"
+                    @bind-Value="RegistrationState.CurrentRegistrationForm.Notes" @bind-Value:after="MarkAsDirty"
+                    rows="3" placeholder="Additional notes (optional)" disabled="@IsSubmitting" />
+                <ValidationMessage For="@(() => RegistrationState.CurrentRegistrationForm.Notes)" />
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check">
+                    <InputCheckbox id="attendedEvent" class="form-check-input"
+                        @bind-Value="RegistrationState.CurrentRegistrationForm.AttendedEvent"
+                        @bind-Value:after="OnAttendedEventChanged" disabled="@IsSubmitting" />
+                    <label for="attendedEvent" class="form-check-label">
+                        Attended Event
+                        @if (RegistrationState.CurrentRegistrationForm.AttendedEvent)
+                        {
+                            <i class="fas fa-check-circle text-success ms-1"></i>
+                        }
+                    </label>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <button type="submit" class="btn btn-success me-2" disabled="@IsSubmitting">
+                        @if (IsSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        else
+                        {
+                            <i class="fas fa-save me-2"></i>
+                        }
+                        @SaveButtonText
+                    </button>
+
+                    <button type="button" class="btn btn-warning me-2" @onclick="ResetFormAsync"
+                        disabled="@IsSubmitting">
+                        <i class="fas fa-undo me-2"></i>
+                        Reset Form
+                    </button>
+
+                    <button type="button" class="btn btn-secondary" @onclick="CancelAsync" disabled="@IsSubmitting">
+                        <i class="fas fa-times me-2"></i>
+                        Cancel
+                    </button>
+                </div>
+
+                @if (RegistrationState.IsFormDirty)
+                {
+                    <small class="text-warning">
+                        <i class="fas fa-exclamation-circle me-1"></i>
+                        Unsaved changes
+                    </small>
+                }
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Registration Registration { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<Registration> OnValidSubmitCallback { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelCallback { get; set; }
+
+    [Parameter]
+    public string FormTitle { get; set; } = "Registration Details";
+
+    private bool IsSubmitting { get; set; }
+    private string ErrorMessage { get; set; } = string.Empty;
+    private bool HasValidationErrors { get; set; }
+
+    private string SaveButtonText => IsEditMode ? "Update Registration" : "Create Registration";
+    private bool IsEditMode => Registration?.Id != Guid.Empty;
+
+    protected override void OnInitialized()
+    {
+        Logger.LogInformation("RegistrationForm initialized - CurrentRegistrationForm: {AttendeeName} (ID: {Id})",
+        RegistrationState.CurrentRegistrationForm?.AttendeeName,
+        RegistrationState.CurrentRegistrationForm?.Id);
+
+        ErrorMessage = string.Empty;
+        HasValidationErrors = false;
+    }
+
+    protected override void OnParametersSet()
+    {
+        ErrorMessage = string.Empty;
+        HasValidationErrors = false;
+    }
+
+    private void MarkAsDirty()
+    {
+        RegistrationState?.MarkFormDirty();
+        ErrorMessage = string.Empty;
+    }
+
+    private void OnAttendedEventChanged()
+    {
+        Logger.LogInformation("Checkbox changed - marking form dirty. New value: {AttendedEvent}",
+        RegistrationState.CurrentRegistrationForm?.AttendedEvent);
+        MarkAsDirty();
+    }
+
+    private async Task ResetFormAsync()
+    {
+        if (IsSubmitting) return;
+
+        try
+        {
+            ErrorMessage = string.Empty;
+            HasValidationErrors = false;
+
+            await RegistrationState.ResetRegistrationFormAsync();
+
+            var eventId = Registration?.EventId ?? Guid.Empty;
+            await RegistrationState.InitializeForNewRegistrationAsync(eventId);
+
+            Registration = new Registration
+            {
+                EventId = eventId
+            };
+
+            StateHasChanged();
+
+            Logger.LogInformation("Registration form and state completely reset to new registration state");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "An error occurred while resetting the form.";
+            Logger.LogError(ex, "Error resetting registration form and state");
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        if (IsSubmitting) return;
+
+        IsSubmitting = true;
+        ErrorMessage = string.Empty;
+        HasValidationErrors = false;
+
+        try
+        {
+            Logger.LogInformation("Saving registration: {AttendeeName} (ID: {Id})",
+            RegistrationState.CurrentRegistrationForm?.AttendeeName,
+            RegistrationState.CurrentRegistrationForm?.Id);
+
+            var registrationToSave = PrepareRegistrationForSave();
+            var savedRegistration = await SaveRegistrationAsync(registrationToSave);
+
+            await RegistrationState.ResetRegistrationFormAsync();
+            await OnValidSubmitCallback.InvokeAsync(savedRegistration);
+        }
+        catch (ValidationException ex)
+        {
+            ErrorMessage = ex.Message;
+            HasValidationErrors = true;
+            Logger.LogWarning("Validation error saving registration: {Message}", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "An error occurred while saving the registration. Please try again.";
+            Logger.LogError(ex, "Error saving registration with ID: {RegistrationId}",
+            RegistrationState.CurrentRegistrationForm?.Id);
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+
+    private Registration PrepareRegistrationForSave()
+    {
+        if (RegistrationState.CurrentRegistrationForm == null)
+        {
+            throw new InvalidOperationException("CurrentRegistrationForm is null.");
+        }
+
+        var registration = new Registration
+        {
+            Id = RegistrationState.CurrentRegistrationForm.Id,
+            EventId = RegistrationState.CurrentRegistrationForm.EventId,
+            AttendeeName = RegistrationState.CurrentRegistrationForm.AttendeeName?.Trim() ?? string.Empty,
+            Telephone = RegistrationState.CurrentRegistrationForm.Telephone?.Trim() ?? string.Empty,
+            EmailAddress = RegistrationState.CurrentRegistrationForm.EmailAddress?.Trim() ?? string.Empty,
+            Notes = RegistrationState.CurrentRegistrationForm.Notes?.Trim() ?? string.Empty,
+            AttendedEvent = RegistrationState.CurrentRegistrationForm.AttendedEvent
+        };
+
+        if (registration.EventId == Guid.Empty && Registration != null && Registration.EventId != Guid.Empty)
+        {
+            registration.EventId = Registration.EventId;
+        }
+
+        if (registration.Id == Guid.Empty)
+        {
+            registration.Id = Guid.NewGuid();
+            Logger.LogInformation("Adding new registration with generated ID: {Id}", registration.Id);
+        }
+        else
+        {
+            Logger.LogInformation("Updating existing registration with ID: {Id}", registration.Id);
+        }
+
+        return registration;
+    }
+
+    private async Task<Registration> SaveRegistrationAsync(Registration registration)
+    {
+        if (registration.Id == Guid.Empty || !IsEditMode)
+        {
+            await RegistrationService.AddAsync(registration);
+            Logger.LogInformation("Created new registration with ID: {RegistrationId}", registration.Id);
+            return registration;
+        }
+        else
+        {
+            await RegistrationService.UpdateAsync(registration);
+            Logger.LogInformation("Updated registration with ID: {RegistrationId}", registration.Id);
+            return registration;
+        }
+    }
+
+    private async Task CancelAsync()
+    {
+        if (IsSubmitting) return;
+
+        try
+        {
+            Logger.LogInformation("RegistrationForm CancelAsync called");
+
+            await RegistrationState.ResetRegistrationFormAsync();
+
+            ErrorMessage = string.Empty;
+            HasValidationErrors = false;
+
+            await OnCancelCallback.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during cancel operation");
+        }
+    }
+}

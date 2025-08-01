@@ -1,0 +1,315 @@
+@inject IRegistrationService RegistrationService
+@inject IHybridRegistrationStateService RegistrationState
+@inject ILogger<RegistrationCard> Logger
+
+@if (showEditForm && selectedRegistration != null)
+{
+    <RegistrationForm Registration="selectedRegistration" FormTitle="Edit Registration"
+        OnValidSubmitCallback="OnEditSubmitAsync" OnCancelCallback="OnEditCancelAsync" />
+}
+else
+{
+    <div class="card mb-3 @CardCssClass">
+        <div class="card-header @HeaderCssClass">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user me-2"></i>
+                    @Registration.AttendeeName
+                </h5>
+                @if (Registration.AttendedEvent)
+                {
+                    <span class="badge bg-success">
+                        <i class="fas fa-check me-1"></i>Attended
+                    </span>
+                }
+                else
+                {
+                    <span class="badge bg-Secondary text-white">
+                        <i class="fas fa-clock me-1"></i>Registered
+                    </span>
+                }
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-2">
+                        <strong><i class="fas fa-phone me-2 text-muted"></i>Phone:</strong>
+                        <span class="ms-1">@(string.IsNullOrEmpty(Registration.Telephone) ? "Not provided" :
+                                                    Registration.Telephone)</span>
+                    </div>
+                    <div class="mb-2">
+                        <strong><i class="fas fa-envelope me-2 text-muted"></i>Email:</strong>
+                        <span class="ms-1">
+                            @if (!string.IsNullOrEmpty(Registration.EmailAddress))
+                            {
+                                <a href="mailto:@Registration.EmailAddress" class="text-decoration-none">
+                                    @Registration.EmailAddress
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Not provided</span>
+                            }
+                        </span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-2">
+                        <strong><i class="fas fa-calendar-check me-2 text-muted"></i>Attendance:</strong>
+                        <div class="form-check form-switch d-inline-block ms-2">
+                            <input class="form-check-input" type="checkbox" id="attendance-@Registration.Id"
+                                checked="@Registration.AttendedEvent" @onchange="OnAttendanceToggled"
+                                disabled="@isUpdatingAttendance" />
+                            <label class="form-check-label" for="attendance-@Registration.Id">
+                                @(Registration.AttendedEvent ? "Present" : "Absent")
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Registration.Notes))
+            {
+                <div class="mt-3">
+                    <strong><i class="fas fa-sticky-note me-2 text-muted"></i>Notes:</strong>
+                    <div class="border rounded p-2 bg-light mt-1">
+                        <small>@Registration.Notes</small>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="card-footer bg-transparent">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <button class="btn btn-sm btn-outline-primary me-2" @onclick="EditRegistrationAsync"
+                        disabled="@isPerformingAction">
+                        @if (isEditingRegistration)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        else
+                        {
+                            <i class="fas fa-edit me-1"></i>
+                        }
+                        Edit
+                    </button>
+
+                    <button class="btn btn-sm btn-outline-danger" @onclick="ShowDeleteConfirm"
+                        disabled="@isPerformingAction">
+                        <i class="fas fa-trash me-1"></i>
+                        Delete
+                    </button>
+                </div>
+
+                <small class="text-muted">
+                    <i class="fas fa-id-badge me-1"></i>
+                    ID: @Registration.Id.ToString("N")[..8]...
+                </small>
+            </div>
+        </div>
+    </div>
+}
+
+<ModalDialog @ref="confirmDialog" Title="Confirm Delete Registration" OnConfirm="DeleteConfirmedAsync"
+    OnCancel="ClearPendingDelete" ConfirmText="Delete" ConfirmButtonClass="btn-danger">
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Are you sure you want to delete this registration?</strong>
+    </div>
+    <div class="mt-3">
+        <strong>Attendee:</strong> @registrationToDelete?.AttendeeName<br />
+        <strong>Telephone:</strong> @registrationToDelete?.Telephone<br />
+        <strong>Email:</strong> @registrationToDelete?.EmailAddress<br />
+        <strong>Notes:</strong> @registrationToDelete?.Notes<br />
+        <small class="text-muted">This action cannot be undone.</small>
+    </div>
+</ModalDialog>
+
+@code {
+    [Parameter, EditorRequired]
+    public Registration Registration { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnRegistrationUpdated { get; set; }
+
+    [Parameter]
+    public EventCallback<Registration> OnEditRequested { get; set; }
+
+    private bool showEditForm = false;
+    private bool isEditingRegistration = false;
+    private bool isUpdatingAttendance = false;
+    private bool isPerformingAction => isEditingRegistration || isUpdatingAttendance;
+
+    private Registration? selectedRegistration;
+    private ModalDialog? confirmDialog;
+    private Registration? registrationToDelete;
+
+    private string CardCssClass => Registration.AttendedEvent ? "border-success" : "border-secondary";
+    private string HeaderCssClass => Registration.AttendedEvent ? "bg-success text-white" : "bg-secondary text-white";
+
+    protected override void OnParametersSet()
+    {
+        if (Registration?.Id != selectedRegistration?.Id)
+        {
+            showEditForm = false;
+            selectedRegistration = null;
+        }
+    }
+
+    private async Task EditRegistrationAsync()
+    {
+        try
+        {
+            isEditingRegistration = true;
+            Logger.LogInformation("Starting edit for registration {RegistrationId}", Registration.Id);
+
+            await RegistrationState.InitializeForEditRegistrationAsync(Registration);
+
+            selectedRegistration = new Registration
+            {
+                Id = Registration.Id,
+                EventId = Registration.EventId,
+                AttendeeName = Registration.AttendeeName,
+                Telephone = Registration.Telephone,
+                EmailAddress = Registration.EmailAddress,
+                Notes = Registration.Notes,
+                AttendedEvent = Registration.AttendedEvent
+            };
+
+            showEditForm = true;
+            Logger.LogInformation("Edit form opened for registration {RegistrationId}", Registration.Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error starting edit for registration {RegistrationId}", Registration.Id);
+        }
+        finally
+        {
+            isEditingRegistration = false;
+        }
+    }
+
+    private async Task OnEditSubmitAsync(Registration updatedRegistration)
+    {
+        try
+        {
+            Logger.LogInformation("Saving updated registration {RegistrationId}", updatedRegistration.Id);
+
+            await RegistrationService.UpdateAsync(updatedRegistration);
+
+            showEditForm = false;
+            selectedRegistration = null;
+
+            await RegistrationState.ResetRegistrationFormAsync();
+
+            await OnRegistrationUpdated.InvokeAsync();
+
+            Logger.LogInformation("Registration {RegistrationId} updated successfully", updatedRegistration.Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving registration {RegistrationId}", updatedRegistration.Id);
+            throw;
+        }
+    }
+
+    private async Task OnEditCancelAsync()
+    {
+        try
+        {
+            Logger.LogInformation("Edit cancelled for registration {RegistrationId}", selectedRegistration?.Id);
+
+            showEditForm = false;
+            selectedRegistration = null;
+
+            await RegistrationState.ResetRegistrationFormAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error cancelling edit");
+        }
+    }
+
+    private async Task OnAttendanceToggled(ChangeEventArgs e)
+    {
+        if (isPerformingAction) return;
+
+        try
+        {
+            isUpdatingAttendance = true;
+            var newAttendanceValue = (bool)(e.Value ?? false);
+
+            Logger.LogInformation("Toggling attendance for registration {RegistrationId} to {AttendanceValue}",
+            Registration.Id, newAttendanceValue);
+
+            var updatedRegistration = new Registration
+            {
+                Id = Registration.Id,
+                EventId = Registration.EventId,
+                AttendeeName = Registration.AttendeeName,
+                Telephone = Registration.Telephone,
+                EmailAddress = Registration.EmailAddress,
+                Notes = Registration.Notes,
+                AttendedEvent = newAttendanceValue
+            };
+
+            await RegistrationService.UpdateAsync(updatedRegistration);
+            await OnRegistrationUpdated.InvokeAsync();
+
+            Logger.LogInformation("Attendance updated successfully for registration {RegistrationId}", Registration.Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating attendance for registration {RegistrationId}", Registration.Id);
+            StateHasChanged();
+        }
+        finally
+        {
+            isUpdatingAttendance = false;
+        }
+    }
+
+    private void ShowDeleteConfirm()
+    {
+        if (isPerformingAction) return;
+
+        registrationToDelete = Registration;
+        confirmDialog?.Show();
+        Logger.LogInformation("Delete confirmation shown for registration {RegistrationId}", Registration.Id);
+    }
+
+    private void ClearPendingDelete()
+    {
+        registrationToDelete = null;
+        confirmDialog?.Hide();
+        Logger.LogInformation("Delete confirmation canceled");
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (registrationToDelete is null) return;
+
+        try
+        {
+            Logger.LogInformation("Deleting registration {RegistrationId}", registrationToDelete.Id);
+
+            await RegistrationService.DeleteAsync(registrationToDelete.Id);
+            await OnRegistrationUpdated.InvokeAsync();
+
+            Logger.LogInformation("Registration {RegistrationId} deleted successfully", registrationToDelete.Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting registration {RegistrationId}", registrationToDelete.Id);
+        }
+        finally
+        {
+            registrationToDelete = null;
+            confirmDialog?.Hide();
+        }
+    }
+}

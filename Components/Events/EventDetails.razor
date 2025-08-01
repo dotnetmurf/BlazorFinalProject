@@ -1,0 +1,63 @@
+@*
+    EventDetails Component
+    
+    Purpose: Displays detailed information about a single event including date, 
+    location, registration statistics, and optional notes.
+    
+    Features:
+    - Event date display with calendar icon formatting
+    - Location information with map marker icon
+    - Registration count with user group icon
+    - Attendance count with user check icon and percentage badge
+    - Conditional notes display with sticky note icon
+    - Bootstrap icons and badges for visual enhancement
+    
+    Statistics Display:
+    - Shows total registrations and actual attendees
+    - Calculates and displays attendance rate as percentage badge
+    - Conditional rendering based on data availability
+    
+    Dependencies:
+    - Event model for core event information
+    - EventStatistics model for registration and attendance data
+    - Font Awesome icons for visual indicators
+    - Bootstrap classes for styling
+    
+    Usage: Embedded in EventCard component body to display event information in a structured format.
+*@
+
+<h6 class="card-text mb-1">
+    <i class="fas fa-calendar-alt me-2"></i>
+    Date: @Event.Date.ToLongDateString()
+</h6>
+<p class="card-text mb-1">
+    <i class="fas fa-map-marker-alt me-2"></i>
+    Location: @Event.Location
+</p>
+<p class="card-text mb-1">
+    <i class="fas fa-users me-2"></i>
+    Registered: @Statistics.RegistrationCount
+</p>
+<p class="card-text mb-1">
+    <i class="fas fa-user-check me-2"></i>
+    Attended: @Statistics.AttendeeCount
+    @if (Statistics.RegistrationCount > 0)
+    {
+        <span class="badge bg-info ms-2">@($"{Statistics.AttendanceRate:F1}%")</span>
+    }
+</p>
+@if (!string.IsNullOrWhiteSpace(Event.Notes))
+{
+    <p class="card-text text-muted mt-2">
+        <i class="fas fa-sticky-note me-2"></i>
+        @Event.Notes
+    </p>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public Event Event { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventStatistics Statistics { get; set; } = default!;
+}

@@ -1,0 +1,565 @@
+Date: 20250704
+Conversation Title: Refine the Mock Data Service
+
+Prompt:
+I am going to send you some code samples to illustrate what I am going to ask you to create for me.
+
+Response:
+Understood! Please go ahead and send your code samples or requirements. I’m ready to help you create what you need.
+
+Prompt:
+    public MockEventService()
+    {
+        // Seed data
+        var initialEvents = new[]
+        {
+            new Event { Id = 1, Name = "Developer Summit", Date = DateTime.Today.AddDays(5), Location = "Chicago", Notes = "Tech insights from top minds." },
+            new Event { Id = 2, Name = "UX Workshop", Date = DateTime.Today.AddDays(12), Location = "Remote", Notes = "Hands-on UI prototyping." }
+        };
+
+        foreach (var evt in initialEvents)
+        {
+            evt.Id = ++_currentId;
+            _events[evt.Id] = evt;
+        }
+    }
+
+
+Response:
+Certainly! The code you provided is a constructor for a mock service that seeds initial data for events. If you want to create a similar constructor for a MockRegistrationService that seeds initial registration data, here’s how you can do it:
+
+public MockRegistrationService()
+{
+    // Seed data
+    var initialRegistrations = new[]
+    {
+        new Registration { Id = 1, EventId = 1, UserName = "Alice Smith", Telephone = "13129857612", EmailAddress = "alice@example.com", Notes = "new note 1" },
+        new Registration { Id = 2, EventId = 1, UserName = "John Jones", Telephone = "13129858592", EmailAddress = "john@example.com", Notes = "new note 2" },
+        new Registration { Id = 3, EventId = 2, UserName = "Mike Parry", Telephone = "17082748726", EmailAddress = "mikee@example.com", Notes = "new note 3" },
+        new Registration { Id = 4, EventId = 2, UserName = "Lisa Wilson", Telephone = "12248450087", EmailAddress = "lisa@example.com", Notes = "new note 4" }
+    };
+
+    foreach (var reg in initialRegistrations)
+    {
+        reg.Id = ++_currentId;
+        _registrations[reg.Id] = reg;
+    }
+}
+
+This will:
+
+Seed your mock registration service with initial data for two events.
+Ensure each registration gets a unique ID and is added to the in-memory dictionary.
+You can adjust the sample data as needed for your scenario.
+
+Prompt:
+Yes, thank you for providing the code for a MockRegistrationService constructor . I want you to create a MockDataService.cs file. It will have separate methods for initialEvents and initialRegistrations data sets. For the first step, each method will delete all existing local data its related records of events and registrations. After each data set is created, it will save the data to the LocalStorage service. After the new data for events and registrations is saved, it will notify the parent EventsPage to refresh the list. The file will also have a method for calling the two seed data methods in order of events first and registrations second. I am eager to see what you create for me.
+
+Response:
+MockDataService.cs:
+
+using Blazored.LocalStorage;
+using BlazorFinalProject.Models;
+using BlazorFinalProject.Services.Interfaces;
+
+public class MockDataService
+{
+    private readonly ILocalStorageService _localStorage;
+    private const string EventsKey = "events";
+    private const string RegistrationsKey = "registrations";
+
+    public MockDataService(ILocalStorageService localStorage)
+    {
+        _localStorage = localStorage;
+    }
+
+    // Deletes all events and seeds new event data
+    public async Task SeedEventsAsync()
+    {
+        await _localStorage.RemoveItemAsync(EventsKey);
+
+        var initialEvents = new List<Event>
+        {
+            new Event { Id = 1, Name = "Developer Summit", Date = DateTime.Today.AddDays(5), Location = "Chicago", Notes = "Tech insights from top minds." },
+            new Event { Id = 2, Name = "UX Workshop", Date = DateTime.Today.AddDays(12), Location = "Remote", Notes = "Hands-on UI prototyping." }
+        };
+
+        await _localStorage.SetItemAsync(EventsKey, initialEvents);
+    }
+
+    // Deletes all registrations and seeds new registration data
+    public async Task SeedRegistrationsAsync()
+    {
+        await _localStorage.RemoveItemAsync(RegistrationsKey);
+
+        var initialRegistrations = new List<Registration>
+        {
+            new Registration { Id = 1, EventId = 1, UserName = "Alice Smith", Telephone = "13129857612", EmailAddress = "alice@example.com", Notes = "new note 1" },
+            new Registration { Id = 2, EventId = 1, UserName = "John Jones", Telephone = "13129858592", EmailAddress = "john@example.com", Notes = "new note 2" },
+            new Registration { Id = 3, EventId = 2, UserName = "Mike Parry", Telephone = "17082748726", EmailAddress = "mikee@example.com", Notes = "new note 3" },
+            new Registration { Id = 4, EventId = 2, UserName = "Lisa Wilson", Telephone = "12248450087", EmailAddress = "lisa@example.com", Notes = "new note 4" }
+        };
+
+        await _localStorage.SetItemAsync(RegistrationsKey, initialRegistrations);
+    }
+
+    // Seeds both events and registrations, events first
+    public async Task SeedAllAsync(Func<Task>? onSeedComplete = null)
+    {
+        await SeedEventsAsync();
+        await SeedRegistrationsAsync();
+
+        if (onSeedComplete is not null)
+        {
+            await onSeedComplete();
+        }
+    }
+}
+
+Usage notes:
+
+Inject MockDataService and call SeedAllAsync from your parent (e.g., EventsPage.razor), passing a callback to refresh the lists.
+The onSeedComplete parameter allows you to notify the parent to refresh after seeding.
+You can expand this service with more seed data or logic as needed.
+
+Prompt:
+Inject MockDataService and call SeedAllAsync from your parent (e.g., EventsPage.razor), passing a callback to refresh the lists; can you please provide the code to do this?
+
+Response:
+Certainly! Here’s how you can inject MockDataService and add a button to seed the data and refresh your events list in EventsPage.razor:
+
+1. Inject the service at the top:
+@inject MockDataService MockDataService
+
+2. Add a button to trigger seeding (place this above or below your "Add New Event" button):
+<button class="btn btn-warning mb-3 ms-2" @onclick="SeedMockDataAsync">Seed Mock Data</button>
+
+3. Add the method in your @code block:
+private async Task SeedMockDataAsync()
+{
+    await MockDataService.SeedAllAsync(async () =>
+    {
+        events = await EventService.GetAllAsync();
+        StateHasChanged();
+    });
+}
+
+Full Example Snippet:
+@inject MockDataService MockDataService
+
+...
+
+<button class="btn btn-primary mb-3" @onclick="AddNewEvent">Add New Event</button>
+<button class="btn btn-warning mb-3 ms-2" @onclick="SeedMockDataAsync">Seed Mock Data</button>
+
+...
+
+@code {
+    // ...existing code...
+
+    private async Task SeedMockDataAsync()
+    {
+        await MockDataService.SeedAllAsync(async () =>
+        {
+            events = await EventService.GetAllAsync();
+            StateHasChanged();
+        });
+    }
+}
+
+This will:
+
+Inject your MockDataService
+Add a button to seed mock data
+Refresh the events list after seeding
+If you want to refresh registrations as well, add similar logic for your registrations list.
+
+Prompt:
+Can you please create an IMockDataService.cs interface file?
+
+Response:
+IMockDataService.cs:
+using System.Threading.Tasks;
+
+namespace BlazorFinalProject.Services.Interfaces
+{
+    public interface IMockDataService
+    {
+        Task SeedEventsAsync();
+        Task SeedRegistrationsAsync();
+        Task SeedAllAsync(Func<Task>? onSeedComplete = null);
+    }
+}
+
+Prompt:
+'builder.Services.AddScoped<IMockDataService, MockDataService>();'; is AddScoped the proper registration for this service?
+
+Response:
+Yes, AddScoped<IMockDataService, MockDataService>() is the proper registration for this service in a Blazor WebAssembly app.
+
+Reason:
+
+Scoped services are created once per user session in Blazor WebAssembly, which is appropriate for services that interact with browser APIs (like local storage) and do not need to be singletons.
+Singleton is not recommended for services using JS interop or browser APIs in Blazor WebAssembly.
+Transient would create a new instance every time, which is unnecessary for this scenario.
+Summary:
+AddScoped is the correct and recommended choice for MockDataService in this context.
+
+Prompt:
+<ModalDialog @ref="confirmDialog" Title="Confirm Delete" OnConfirm="DeleteConfirmedAsync" OnCancel="ClearPendingDelete">
+    Are you sure you want to delete this event?
+</ModalDialog>
+
+I want to use the same ModalDialog operation the confirm using the SeedMockDataAsync method when it is called by the 'Seed Mock Data' button click. Can you provide this code, please?
+
+Response:
+Certainly! You can reuse the same ModalDialog for confirming the "Seed Mock Data" operation by:
+
+...
+<button class="btn btn-primary mb-3" @onclick="AddNewEvent">Add New Event</button>
+<button class="btn btn-warning mb-3 ms-2" @onclick="ConfirmSeedMockData">Seed Mock Data</button>
+...
+<ModalDialog @ref="confirmDialog" Title="Confirm"
+             OnConfirm="OnDialogConfirm"
+             OnCancel="ClearPendingDialog">
+    @dialogMessage
+</ModalDialog>
+
+@code {
+    private List<Event> events = new();
+    private Event? selectedEvent;
+    private bool showForm = false;
+    private Event? eventToDelete;
+    private ModalDialog? confirmDialog;
+
+    // Add these:
+    private string dialogMessage = "";
+    private string? pendingAction = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        events = await EventService.GetAllAsync();
+    }
+
+    private void ConfirmDelete(Event evt)
+    {
+        eventToDelete = evt;
+        dialogMessage = "Are you sure you want to delete this event?";
+        pendingAction = "delete";
+        confirmDialog?.Show();
+    }
+
+    private void ConfirmSeedMockData()
+    {
+        dialogMessage = "Are you sure you want to seed mock data? This will overwrite all current events and registrations.";
+        pendingAction = "seed";
+        confirmDialog?.Show();
+    }
+
+    private void ClearPendingDialog()
+    {
+        eventToDelete = null;
+        pendingAction = null;
+        confirmDialog?.Hide();
+    }
+
+    private async Task OnDialogConfirm()
+    {
+        if (pendingAction == "delete" && eventToDelete is not null)
+        {
+            await EventService.DeleteAsync(eventToDelete.Id);
+            events = await EventService.GetAllAsync();
+        }
+        else if (pendingAction == "seed")
+        {
+            await MockDataService.SeedAllAsync(async () =>
+            {
+                events = await EventService.GetAllAsync();
+                StateHasChanged();
+            });
+        }
+        ClearPendingDialog();
+    }
+
+    // ...rest of your code (AddNewEvent, EditEvent, SaveEventAsync, etc.)...
+}
+
+Adding a new state variable to track the type of confirmation (delete or seed).
+Updating the dialog message and confirm action based on the operation.
+Modifying your button and methods accordingly.
+Here’s how you can do it:
+
+How it works:
+
+The ConfirmSeedMockData method sets the dialog message and action, then shows the modal.
+The OnDialogConfirm method checks which action is pending and executes the appropriate logic.
+The same modal is used for both delete and seed confirmations, with the message and action determined at runtime.
+
+Prompt:
+I am providing a copy of my existing EventsPage.razor file bellow. Can you please incorporate the necessary changes needed for adding the same ModalDialog operation the confirm using the SeedMockDataAsync method when it is called by the 'Seed Mock Data' button click in this file's code?
+[provided copy of current EventsPage.razor file here]
+
+Response:
+EventsPage.razor:
+
+@page "/events"
+@using BlazorFinalProject.Models
+@using BlazorFinalProject.Services.Interfaces
+@using BlazorFinalProject.Components.Events
+@using BlazorFinalProject.Components.Shared
+@inject IEventService EventService
+@inject IRegistrationService RegistrationService
+@inject IMockDataService MockDataService
+
+<PageTitle>Events List</PageTitle>
+
+<h3 class="mb-4">Events List</h3>
+
+@if (showForm)
+{
+    <EventForm Event="selectedEvent" OnValidSubmitCallback="SaveEventAsync" OnCancelCallback="CancelEditAsync" />
+}
+else
+{
+    <button class="btn btn-primary mb-3" @onclick="AddNewEvent">Add New Event</button>
+    <button class="btn btn-warning mb-3 ms-2" @onclick="ConfirmSeedMockData">Seed Mock Data</button>
+
+    @if (events?.Any() == true)
+    {
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+            @foreach (var evt in events)
+            {
+                <div class="col mb-5">
+                    <EventCard Event="evt" DetailsPageUri="/events/details" />
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-secondary me-2" @onclick="@(() => EditEvent(evt))">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="@(() => ConfirmDelete(evt))">Delete</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <p>No events found. Why not create one?</p>
+    }
+}
+
+<ModalDialog @ref="confirmDialog" Title="Confirm"
+             OnConfirm="OnDialogConfirm"
+             OnCancel="ClearPendingDialog">
+    @dialogMessage
+</ModalDialog>
+
+@code {
+    private List<Event> events = new();
+    private Event? selectedEvent;
+    private bool showForm = false;
+    private Event? eventToDelete;
+    private ModalDialog? confirmDialog;
+
+    // New state for dialog
+    private string dialogMessage = "";
+    private string? pendingAction = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        events = await EventService.GetAllAsync();
+    }
+
+    private void AddNewEvent()
+    {
+        selectedEvent = new Event
+        {
+            Date = DateTime.Today // Set default date to today
+        };
+        showForm = true;
+    }
+
+    private void EditEvent(Event evt)
+    {
+        selectedEvent = new Event
+        {
+            Id = evt.Id,
+            Name = evt.Name,
+            Date = evt.Date,
+            Location = evt.Location,
+            Notes = evt.Notes
+        };
+        showForm = true;
+    }
+
+    private async Task SaveEventAsync(Event evt)
+    {
+        if (evt.Id == 0)
+            await EventService.AddAsync(evt);
+        else
+            await EventService.UpdateAsync(evt);
+
+        events = await EventService.GetAllAsync();
+        showForm = false;
+    }
+
+    private Task CancelEditAsync()
+    {
+        showForm = false;
+        selectedEvent = null;
+        return Task.CompletedTask;
+    }
+
+    private void ConfirmDelete(Event evt)
+    {
+        eventToDelete = evt;
+        dialogMessage = "Are you sure you want to delete this event?";
+        pendingAction = "delete";
+        confirmDialog?.Show();
+    }
+
+    private void ConfirmSeedMockData()
+    {
+        dialogMessage = "Are you sure you want to seed mock data? This will overwrite all current events and registrations.";
+        pendingAction = "seed";
+        confirmDialog?.Show();
+    }
+
+    private void ClearPendingDialog()
+    {
+        eventToDelete = null;
+        pendingAction = null;
+        confirmDialog?.Hide();
+    }
+
+    private async Task OnDialogConfirm()
+    {
+        if (pendingAction == "delete" && eventToDelete is not null)
+        {
+            await EventService.DeleteAsync(eventToDelete.Id);
+            events = await EventService.GetAllAsync();
+        }
+        else if (pendingAction == "seed")
+        {
+            await MockDataService.SeedAllAsync(async () =>
+            {
+                events = await EventService.GetAllAsync();
+                StateHasChanged();
+            });
+        }
+        ClearPendingDialog();
+    }
+}
+
+Key changes:
+
+The "Seed Mock Data" button now calls ConfirmSeedMockData instead of SeedMockDataAsync.
+The ModalDialog is reused for both delete and seed confirmations, with a dynamic message and action.
+The code tracks which action is pending and executes the correct logic in OnDialogConfirm.
+
+Prompt:
+Below are the two event records created by the SeedEventsAsync method; can you please create eight more events with random data (Id = 3 through Id = 8)?
+
+            new Event { Id = 1, Name = "Developer Summit", Date = DateTime.Today.AddDays(5), Location = "Chicago", Notes = "Tech insights from top minds." },
+            new Event { Id = 2, Name = "UX Workshop", Date = DateTime.Today.AddDays(12), Location = "Remote", Notes = "Hands-on UI prototyping." }
+
+Response:
+var initialEvents = new List<Event>
+{
+    new Event { Id = 1, Name = "Developer Summit", Date = DateTime.Today.AddDays(5), Location = "Chicago", Notes = "Tech insights from top minds." },
+    new Event { Id = 2, Name = "UX Workshop", Date = DateTime.Today.AddDays(12), Location = "Remote", Notes = "Hands-on UI prototyping." },
+    new Event { Id = 3, Name = "Cloud Expo", Date = DateTime.Today.AddDays(20), Location = "San Francisco", Notes = "Latest in cloud technologies." },
+    new Event { Id = 4, Name = "AI Bootcamp", Date = DateTime.Today.AddDays(30), Location = "New York", Notes = "Deep dive into AI and ML." },
+    new Event { Id = 5, Name = "Cybersecurity Forum", Date = DateTime.Today.AddDays(15), Location = "Austin", Notes = "Protecting digital assets." },
+    new Event { Id = 6, Name = "Agile Days", Date = DateTime.Today.AddDays(25), Location = "Seattle", Notes = "Agile best practices." },
+    new Event { Id = 7, Name = "Mobile DevCon", Date = DateTime.Today.AddDays(18), Location = "Boston", Notes = "Mobile app development trends." },
+    new Event { Id = 8, Name = "Data Science Summit", Date = DateTime.Today.AddDays(22), Location = "Denver", Notes = "Big data and analytics." },
+    new Event { Id = 9, Name = "Tech Leaders Meetup", Date = DateTime.Today.AddDays(10), Location = "Atlanta", Notes = "Networking for tech leaders." },
+    new Event { Id = 10, Name = "Startup Pitch Night", Date = DateTime.Today.AddDays(28), Location = "Los Angeles", Notes = "Pitch your startup ideas." }
+};
+
+Prompt:
+Below are the four registration records created by the SeedEventsAsync method; can you please create fifty-six more registrations with random data (Id = 5 through Id = 60)?
+
+        var initialRegistrations = new List<Registration>
+        {
+            new Registration { Id = 1, EventId = 1, UserName = "Alice Smith", Telephone = "13129857612", EmailAddress = "alice@example.com", Notes = "new note 1" },
+            new Registration { Id = 2, EventId = 1, UserName = "John Jones", Telephone = "13129858592", EmailAddress = "john@example.com", Notes = "new note 2" },
+            new Registration { Id = 3, EventId = 2, UserName = "Mike Parry", Telephone = "17082748726", EmailAddress = "mikee@example.com", Notes = "new note 3" },
+            new Registration { Id = 4, EventId = 2, UserName = "Lisa Wilson", Telephone = "12248450087", EmailAddress = "lisa@example.com", Notes = "new note 4" }
+        };
+
+Response:
+var initialRegistrations = new List<Registration>
+{
+    new Registration { Id = 1, EventId = 1, UserName = "Alice Smith", Telephone = "13129857612", EmailAddress = "alice@example.com", Notes = "new note 1" },
+    new Registration { Id = 2, EventId = 1, UserName = "John Jones", Telephone = "13129858592", EmailAddress = "john@example.com", Notes = "new note 2" },
+    new Registration { Id = 3, EventId = 2, UserName = "Mike Parry", Telephone = "17082748726", EmailAddress = "mikee@example.com", Notes = "new note 3" },
+    new Registration { Id = 4, EventId = 2, UserName = "Lisa Wilson", Telephone = "12248450087", EmailAddress = "lisa@example.com", Notes = "new note 4" },
+    new Registration { Id = 5, EventId = 3, UserName = "Ethan Brown", Telephone = "14025551234", EmailAddress = "ethan.brown@example.com", Notes = "VIP guest" },
+    new Registration { Id = 6, EventId = 3, UserName = "Sophia Lee", Telephone = "14025554321", EmailAddress = "sophia.lee@example.com", Notes = "Vegetarian meal" },
+    new Registration { Id = 7, EventId = 3, UserName = "Noah Kim", Telephone = "14025556789", EmailAddress = "noah.kim@example.com", Notes = "Needs parking" },
+    new Registration { Id = 8, EventId = 3, UserName = "Olivia Chen", Telephone = "14025559876", EmailAddress = "olivia.chen@example.com", Notes = "Speaker" },
+    new Registration { Id = 9, EventId = 4, UserName = "William Clark", Telephone = "14025557654", EmailAddress = "william.clark@example.com", Notes = "First time attendee" },
+    new Registration { Id = 10, EventId = 4, UserName = "Ava Patel", Telephone = "14025553456", EmailAddress = "ava.patel@example.com", Notes = "Panelist" },
+    new Registration { Id = 11, EventId = 4, UserName = "James Wright", Telephone = "14025552345", EmailAddress = "james.wright@example.com", Notes = "Needs wheelchair access" },
+    new Registration { Id = 12, EventId = 4, UserName = "Mia Davis", Telephone = "14025557890", EmailAddress = "mia.davis@example.com", Notes = "Bringing guest" },
+    new Registration { Id = 13, EventId = 5, UserName = "Benjamin Hall", Telephone = "14025551212", EmailAddress = "benjamin.hall@example.com", Notes = "Prefers email updates" },
+    new Registration { Id = 14, EventId = 5, UserName = "Charlotte Young", Telephone = "14025553412", EmailAddress = "charlotte.young@example.com", Notes = "Allergic to nuts" },
+    new Registration { Id = 15, EventId = 5, UserName = "Lucas Hernandez", Telephone = "14025554567", EmailAddress = "lucas.hernandez@example.com", Notes = "Needs invoice" },
+    new Registration { Id = 16, EventId = 5, UserName = "Amelia King", Telephone = "14025555678", EmailAddress = "amelia.king@example.com", Notes = "Returning attendee" },
+    new Registration { Id = 17, EventId = 6, UserName = "Henry Scott", Telephone = "14025556712", EmailAddress = "henry.scott@example.com", Notes = "Prefers phone contact" },
+    new Registration { Id = 18, EventId = 6, UserName = "Emily Green", Telephone = "14025557823", EmailAddress = "emily.green@example.com", Notes = "Needs gluten-free meal" },
+    new Registration { Id = 19, EventId = 6, UserName = "Jack Adams", Telephone = "14025558934", EmailAddress = "jack.adams@example.com", Notes = "Speaker" },
+    new Registration { Id = 20, EventId = 6, UserName = "Harper Nelson", Telephone = "14025559045", EmailAddress = "harper.nelson@example.com", Notes = "Panelist" },
+    new Registration { Id = 21, EventId = 7, UserName = "Alexander Baker", Telephone = "14025550123", EmailAddress = "alexander.baker@example.com", Notes = "Needs parking" },
+    new Registration { Id = 22, EventId = 7, UserName = "Ella Carter", Telephone = "14025550234", EmailAddress = "ella.carter@example.com", Notes = "Vegetarian meal" },
+    new Registration { Id = 23, EventId = 7, UserName = "Sebastian Perez", Telephone = "14025550345", EmailAddress = "sebastian.perez@example.com", Notes = "VIP guest" },
+    new Registration { Id = 24, EventId = 7, UserName = "Grace Turner", Telephone = "14025550456", EmailAddress = "grace.turner@example.com", Notes = "First time attendee" },
+    new Registration { Id = 25, EventId = 8, UserName = "Daniel Phillips", Telephone = "14025550567", EmailAddress = "daniel.phillips@example.com", Notes = "Needs invoice" },
+    new Registration { Id = 26, EventId = 8, UserName = "Chloe Campbell", Telephone = "14025550678", EmailAddress = "chloe.campbell@example.com", Notes = "Bringing guest" },
+    new Registration { Id = 27, EventId = 8, UserName = "Matthew Parker", Telephone = "14025550789", EmailAddress = "matthew.parker@example.com", Notes = "Prefers email updates" },
+    new Registration { Id = 28, EventId = 8, UserName = "Scarlett Evans", Telephone = "14025550890", EmailAddress = "scarlett.evans@example.com", Notes = "Allergic to nuts" },
+    new Registration { Id = 29, EventId = 9, UserName = "David Edwards", Telephone = "14025550901", EmailAddress = "david.edwards@example.com", Notes = "Needs wheelchair access" },
+    new Registration { Id = 30, EventId = 9, UserName = "Victoria Collins", Telephone = "14025551012", EmailAddress = "victoria.collins@example.com", Notes = "Returning attendee" },
+    new Registration { Id = 31, EventId = 9, UserName = "Joseph Stewart", Telephone = "14025551123", EmailAddress = "joseph.stewart@example.com", Notes = "Panelist" },
+    new Registration { Id = 32, EventId = 9, UserName = "Penelope Sanchez", Telephone = "14025551234", EmailAddress = "penelope.sanchez@example.com", Notes = "Speaker" },
+    new Registration { Id = 33, EventId = 10, UserName = "Samuel Morris", Telephone = "14025551345", EmailAddress = "samuel.morris@example.com", Notes = "VIP guest" },
+    new Registration { Id = 34, EventId = 10, UserName = "Lily Rogers", Telephone = "14025551456", EmailAddress = "lily.rogers@example.com", Notes = "Vegetarian meal" },
+    new Registration { Id = 35, EventId = 10, UserName = "Owen Reed", Telephone = "14025551567", EmailAddress = "owen.reed@example.com", Notes = "Needs parking" },
+    new Registration { Id = 36, EventId = 10, UserName = "Zoe Cook", Telephone = "14025551678", EmailAddress = "zoe.cook@example.com", Notes = "First time attendee" },
+    new Registration { Id = 37, EventId = 1, UserName = "Mason Bell", Telephone = "14025551789", EmailAddress = "mason.bell@example.com", Notes = "Prefers phone contact" },
+    new Registration { Id = 38, EventId = 1, UserName = "Layla Murphy", Telephone = "14025551890", EmailAddress = "layla.murphy@example.com", Notes = "Needs gluten-free meal" },
+    new Registration { Id = 39, EventId = 1, UserName = "Logan Bailey", Telephone = "14025551901", EmailAddress = "logan.bailey@example.com", Notes = "Speaker" },
+    new Registration { Id = 40, EventId = 1, UserName = "Aria Rivera", Telephone = "14025552012", EmailAddress = "aria.rivera@example.com", Notes = "Panelist" },
+    new Registration { Id = 41, EventId = 2, UserName = "Elijah Cooper", Telephone = "14025552123", EmailAddress = "elijah.cooper@example.com", Notes = "Needs invoice" },
+    new Registration { Id = 42, EventId = 2, UserName = "Sofia Richardson", Telephone = "14025552234", EmailAddress = "sofia.richardson@example.com", Notes = "Returning attendee" },
+    new Registration { Id = 43, EventId = 2, UserName = "Aiden Cox", Telephone = "14025552345", EmailAddress = "aiden.cox@example.com", Notes = "Panelist" },
+    new Registration { Id = 44, EventId = 2, UserName = "Camila Howard", Telephone = "14025552456", EmailAddress = "camila.howard@example.com", Notes = "Speaker" },
+    new Registration { Id = 45, EventId = 3, UserName = "Carter Ward", Telephone = "14025552567", EmailAddress = "carter.ward@example.com", Notes = "VIP guest" },
+    new Registration { Id = 46, EventId = 3, UserName = "Riley Torres", Telephone = "14025552678", EmailAddress = "riley.torres@example.com", Notes = "Vegetarian meal" },
+    new Registration { Id = 47, EventId = 3, UserName = "Wyatt Peterson", Telephone = "14025552789", EmailAddress = "wyatt.peterson@example.com", Notes = "Needs parking" },
+    new Registration { Id = 48, EventId = 3, UserName = "Nora Gray", Telephone = "14025552890", EmailAddress = "nora.gray@example.com", Notes = "First time attendee" },
+    new Registration { Id = 49, EventId = 4, UserName = "Julian Ramirez", Telephone = "14025552901", EmailAddress = "julian.ramirez@example.com", Notes = "Needs invoice" },
+    new Registration { Id = 50, EventId = 4, UserName = "Hazel James", Telephone = "14025553012", EmailAddress = "hazel.james@example.com", Notes = "Bringing guest" },
+    new Registration { Id = 51, EventId = 4, UserName = "Levi Watson", Telephone = "14025553123", EmailAddress = "levi.watson@example.com", Notes = "Prefers email updates" },
+    new Registration { Id = 52, EventId = 4, UserName = "Aurora Brooks", Telephone = "14025553234", EmailAddress = "aurora.brooks@example.com", Notes = "Allergic to nuts" },
+    new Registration { Id = 53, EventId = 5, UserName = "Hudson Kelly", Telephone = "14025553345", EmailAddress = "hudson.kelly@example.com", Notes = "Needs wheelchair access" },
+    new Registration { Id = 54, EventId = 5, UserName = "Savannah Sanders", Telephone = "14025553456", EmailAddress = "savannah.sanders@example.com", Notes = "Returning attendee" },
+    new Registration { Id = 55, EventId = 5, UserName = "Gabriel Price", Telephone = "14025553567", EmailAddress = "gabriel.price@example.com", Notes = "Panelist" },
+    new Registration { Id = 56, EventId = 5, UserName = "Violet Bennett", Telephone = "14025553678", EmailAddress = "violet.bennett@example.com", Notes = "Speaker" },
+    new Registration { Id = 57, EventId = 6, UserName = "Lincoln Wood", Telephone = "14025553789", EmailAddress = "lincoln.wood@example.com", Notes = "VIP guest" },
+    new Registration { Id = 58, EventId = 6, UserName = "Brooklyn Barnes", Telephone = "14025553890", EmailAddress = "brooklyn.barnes@example.com", Notes = "Vegetarian meal" },
+    new Registration { Id = 59, EventId = 6, UserName = "Jayden Ross", Telephone = "14025553901", EmailAddress = "jayden.ross@example.com", Notes = "Needs parking" },
+    new Registration { Id = 60, EventId = 6, UserName = "Stella Henderson", Telephone = "14025554012", EmailAddress = "stella.henderson@example.com", Notes = "First time attendee" }
+};
+
+Prompt:
+Please create new random notes entries for the first four registration records.
+
+Response:
+var initialRegistrations = new List<Registration>
+{
+    new Registration { Id = 1, EventId = 1, UserName = "Alice Smith", Telephone = "13129857612", EmailAddress = "alice.smith@example.com", Notes = "Requested front row seating" },
+    new Registration { Id = 2, EventId = 1, UserName = "John Jones", Telephone = "13129858592", EmailAddress = "john.jones@example.com", Notes = "Will arrive late" },
+    new Registration { Id = 3, EventId = 2, UserName = "Mike Parry", Telephone = "17082748726", EmailAddress = "mike.parry@example.com", Notes = "Needs projector access" },
+    new Registration { Id = 4, EventId = 2, UserName = "Lisa Wilson", Telephone = "12248450087", EmailAddress = "lisa.wilson@example.com", Notes = "Prefers digital materials" },
+    // ...remaining registrations...
+};

@@ -1,0 +1,394 @@
+Date: 20250704
+Conversation Title: Add Additional Bootstrap Icons
+
+Prompt:
+Can you please provide me with a list of icons that are available in Bootstrap 5?
+
+Response:
+Bootstrap 5 itself does not include icons by default. However, the official icon set for Bootstrap is called Bootstrap Icons, which is a separate package you can add to your project.
+
+How to Use Bootstrap Icons
+Install via CDN
+Add this to your <head>:
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+Use an icon in your HTML/Blazor:
+<i class="bi bi-pencil"></i>   <!-- Pencil (edit) icon -->
+<i class="bi bi-trash"></i>    <!-- Trash (delete) icon -->
+<i class="bi bi-plus"></i>     <!-- Plus (add) icon -->
+<i class="bi bi-check"></i>    <!-- Check (success) icon -->
+<i class="bi bi-x"></i>        <!-- X (close/cancel) icon -->
+<i class="bi bi-search"></i>   <!-- Search icon -->
+<i class="bi bi-info-circle"></i> <!-- Info icon -->
+<i class="bi bi-exclamation-triangle"></i> <!-- Warning icon -->
+<i class="bi bi-arrow-left"></i> <!-- Arrow left icon -->
+<i class="bi bi-arrow-right"></i> <!-- Arrow right icon -->
+
+Common Bootstrap Icon Names
+bi-plus (add)
+bi-pencil (edit)
+bi-trash (delete)
+bi-check (checkmark)
+bi-x (close/cancel)
+bi-search (search)
+bi-info-circle (info)
+bi-exclamation-triangle (warning)
+bi-arrow-left, bi-arrow-right, bi-arrow-up, bi-arrow-down (arrows)
+bi-house (home)
+bi-person (user/person)
+bi-list (menu/list)
+bi-calendar (calendar)
+bi-gear (settings)
+bi-star (star/favorite)
+bi-eye (view/show)
+bi-eye-slash (hide)
+bi-lock (lock)
+bi-unlock (unlock)
+
+Full list:
+Visit https://icons.getbootstrap.com/ for the complete searchable icon set and usage examples.
+
+Tip:
+You can use these icons in your Blazor components just like in HTML, e.g.:
+
+Prompt:
+I want to use npm to install the Bootstrap icon package but I get the following error message in the terminal:
+npm i bootstrap-icons
+npm : File C:\Program Files\nodejs\npm.ps1 cannot be loaded. The file C:\Program Files\nodejs\npm.ps1 is not digitally signed. You cannot run this script on the current system. For more information 
+about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170.
+At line:1 char:1
++ npm i bootstrap-icons
++ ~~~
+    + CategoryInfo          : SecurityError: (:) [], PSSecurityException
+    + FullyQualifiedErrorId : UnauthorizedAccess
+
+Response:
+This error is caused by PowerShell’s execution policy, which blocks unsigned scripts—including npm.ps1—from running.
+
+To fix this:
+
+Option 1: Use CMD Instead of PowerShell
+Open a regular Command Prompt (cmd.exe) and run:
+npm i bootstrap-icons
+
+This avoids PowerShell’s script policy entirely.
+
+Option 2: Change PowerShell Execution Policy (for current user)
+If you want to use PowerShell, run this command as administrator:
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+Then try your npm i bootstrap-icons command again.
+
+Summary:
+
+Using CMD is the quickest workaround.
+Changing the execution policy allows PowerShell to run npm scripts.
+Reference:
+about_Execution_Policies - Microsoft Docs
+
+Prompt:
+If I use a regular Command Prompt (cmd.exe), does it matter what folder I am in when I open the Command Prompt?
+
+Response:
+Yes, it does matter what folder you are in when you open the Command Prompt to run npm i bootstrap-icons.
+
+You should open the Command Prompt in the root folder of your project (where your package.json file is located).
+This ensures that the Bootstrap Icons package is installed into your project’s node_modules and added to your project’s dependencies.
+
+How to do this:
+
+Open Command Prompt.
+Use the cd command to navigate to your project folder, for example:
+cd M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject
+
+Then run:
+npm i bootstrap-icons
+
+If you run the command in the wrong folder, the package will be installed there instead of your project, and your project won’t be able to use it easily.
+
+Prompt:
+After executing 'npm i bootstrap-icons' at the Command Prompt, I get the response:
+'added 1 package in 1m
+
+1 package is looking for funding
+  run `npm fund` for details'
+
+What does his response mean?
+
+Response:
+This response means:
+
+"added 1 package in 1m": The bootstrap-icons package was successfully installed in your project (it took 1 minute).
+"1 package is looking for funding": The package you installed has a way for users to support its development financially (for example, via GitHub Sponsors or OpenCollective).
+"run npm fund for details": If you want to see information about how to fund the package maintainers, you can run npm fund in your terminal.
+Summary:
+Your install was successful. The funding message is just informational and does not affect your project.
+
+Prompt:
+Do I need to add a 'link' entry, or a reference, to use the icons in my project?
+
+Response:
+Yes, you need to add a <link> entry in your index.html (for Blazor WebAssembly) or index.html file to use Bootstrap Icons in your project.
+
+Add this line inside the <head> section:
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+Or, if you installed via npm:
+You must reference the CSS file from your node_modules folder. For example, in index.html:
+<link rel="stylesheet" href="node_modules/bootstrap-icons/font/bootstrap-icons.css">
+
+(You may need to copy the CSS and font files to wwwroot or use a bundler if deploying.)
+
+Summary:
+A <link> reference to the Bootstrap Icons CSS is required for the icons to display in your app.
+
+Prompt:
+Which CSS and font files need to be copied to the wwwroot folder?
+
+Response:
+If you installed Bootstrap Icons via npm, you need to copy the following files from font to your wwwroot folder:
+
+Required files:
+
+bootstrap-icons.css
+All font files:
+bootstrap-icons.woff
+bootstrap-icons.woff2
+(Optionally: bootstrap-icons.eot, bootstrap-icons.ttf, bootstrap-icons.svg if you want full browser support)
+Recommended folder structure in wwwroot:
+wwwroot/
+  └── bootstrap-icons/
+        ├── bootstrap-icons.css
+        ├── bootstrap-icons.woff
+        ├── bootstrap-icons.woff2
+        ├── bootstrap-icons.eot
+        ├── bootstrap-icons.ttf
+        └── bootstrap-icons.svg
+
+Then add this to your <head> in index.html:
+<link rel="stylesheet" href="bootstrap-icons/bootstrap-icons.css">
+
+This ensures the CSS and font files are available to your app at runtime.
+
+Prompt:
+The files 'bootstrap-icons.eot' and 'bootstrap-icons.ttf' were not included in the 'node_modules' folder that was installed by npm. What should I do now?
+
+Response:
+That’s expected—recent versions of Bootstrap Icons only include the .woff and .woff2 font files, as these are widely supported by all modern browsers. The .eot, .ttf, and .svg formats are now considered obsolete and are no longer distributed.
+
+What you should do:
+
+Copy only these files from font to your wwwroot/bootstrap-icons/ folder:
+
+bootstrap-icons.css
+bootstrap-icons.woff
+bootstrap-icons.woff2
+Update your <head> in index.html to reference the CSS:
+<link rel="stylesheet" href="bootstrap-icons/bootstrap-icons.css">
+
+No further action is needed.
+The icons will work in all modern browsers with just the .woff and .woff2 files.
+
+Summary:
+You do not need .eot, .ttf, or .svg files. Using only .woff and .woff2 is correct and fully supported.
+
+Prompt:
+I have added the reference '<link rel="stylesheet" href="bootstrap-icons/bootstrap-icons.css">'  but the 'bi bi-calendar-event' icon does not appear in the NavLink class Intellisense lsit. What shoulld I do?
+
+Response:
+IntelliSense in Visual Studio/VS Code does not provide suggestions for Bootstrap Icon class names by default, because these are just CSS classes, not strongly-typed C# or Razor components.
+
+What you should do:
+
+Manually type the icon class name in your markup:
+<span class="bi bi-calendar-event" aria-hidden="true"></span> Manage Events
+
+Check the official Bootstrap Icons site (icons.getbootstrap.com) to find the correct class name for any icon.
+
+Verify your CSS reference is correct (which you have done).
+
+Summary:
+IntelliSense will not list Bootstrap Icon classes. You must copy the class name from the Bootstrap Icons site and type it into your code. The icon will appear in your app if the CSS is referenced correctly and the class name is valid.
+
+Prompt:
+The icon appeared but was tiny and bottom-aligned. Appending '-fill-nav-menu' made the icon disappear. What should I do?
+
+Response:
+The icon class should only be the official Bootstrap Icons class name, such as bi bi-calendar-event or bi bi-house-door-fill.
+Do not append -fill-nav-menu or any other custom suffix unless you have defined a custom CSS class for that purpose.
+
+To adjust the icon’s size and alignment, use Bootstrap utility classes or your own CSS.
+Here’s how you can fix and improve your icons:
+
+1. Use the correct icon class
+<span class="bi bi-house-door-fill me-2" aria-hidden="true"></span> Home
+<span class="bi bi-calendar-event me-2" aria-hidden="true"></span> Manage Events
+<span class="bi bi-info-circle me-2" aria-hidden="true"></span> About
+
+me-2 adds right margin for spacing.
+
+2. Make icons larger (optional)
+Add a Bootstrap display utility or your own CSS:
+<span class="bi bi-house-door-fill me-2 fs-5" aria-hidden="true"></span> Home
+
+fs-5 makes the icon font-size larger.
+
+3. Align icons vertically (optional)
+If needed, add align-middle:
+<span class="bi bi-house-door-fill me-2 align-middle" aria-hidden="true"></span> Home
+
+Summary:
+
+Use only the official Bootstrap Icons class names.
+Use Bootstrap spacing (me-2), sizing (fs-5), and alignment (align-middle) classes for better appearance.
+Remove any -fill-nav-menu or similar suffixes.
+Example for your NavMenu:
+<NavLink class="nav-link" href="/events">
+    <span class="bi bi-calendar-event me-2 align-middle" aria-hidden="true"></span> Manage Events
+</NavLink>
+
+This will display the icon at a good size and properly aligned.
+
+Prompt:
+I have added the line '<span class="bi bi-calendar-event me-2 fs-5 align-middle" aria-hidden="true"></span> Manage Events' to the NavLink. Instead of displaying an icon of a calendar, it is displaying a box with the CSS code 'F1E8' inside. Also the 'align-middle' does not move the icon top the center. What should I try next?
+
+Response:
+The box with the code `F1E8` means the icon font is not loading correctly. This usually happens when:
+
+1. The CSS file is not found or not loaded.
+2. The font files (`.woff`, `.woff2`) are missing or not referenced correctly in the CSS.
+3. The path in your `<link rel="stylesheet" href="...">` does not match where the files actually are.
+
+### Troubleshooting Steps
+
+#### 1. **Check your CSS reference**
+Make sure your `index.html` has:
+```html
+<link rel="stylesheet" href="bootstrap-icons/bootstrap-icons.css">
+```
+and **not** a path that doesn’t exist.
+
+#### 2. **Check your file structure**
+You should have:
+```
+wwwroot/
+  bootstrap-icons/
+    bootstrap-icons.css
+    bootstrap-icons.woff
+    bootstrap-icons.woff2
+```
+
+#### 3. **Check the font paths inside `bootstrap-icons.css`**
+Open `bootstrap-icons.css` and look for lines like:
+```css
+src: url("bootstrap-icons.woff2?xxxx") format("woff2"),
+     url("bootstrap-icons.woff?xxxx") format("woff");
+```
+If the fonts are in `wwwroot/bootstrap-icons/`, the paths are correct.  
+If you moved the CSS or fonts, you may need to adjust the URLs in the CSS file.
+
+#### 4. **Clear browser cache and do a hard refresh**  
+Browsers sometimes cache missing fonts. Press `Ctrl+F5` to force reload.
+
+#### 5. **Check browser dev tools (F12) > Network tab**  
+Look for 404 errors for the font files. If you see any, the path is wrong.
+
+---
+
+### About `align-middle`
+`align-middle` aligns the icon vertically with the middle of the text line, but if the icon is not rendering, you won’t see the effect. Once the icon appears, `align-middle` should work as expected.
+
+---
+
+**Summary:**  
+- Double-check your file locations and CSS reference.
+- Make sure the font files are present and paths in the CSS are correct.
+- Use browser dev tools to check for missing files.
+
+If you still have issues, let me know your exact folder structure and the `<link>` you are using!
+
+Prompt:
+The icon now appears, but neither 'align-middle' or 'align-top' work as expected. What next?
+
+Response:
+Bootstrap’s align-middle and align-top classes are designed for inline elements, but icon fonts sometimes need extra help to align visually with text, especially in navigation menus.
+
+Here’s what you can try:
+
+1. Use align-middle and adjust font size:
+<span class="bi bi-calendar-event me-2 fs-5 align-middle" aria-hidden="true"></span> Manage Events
+
+If this doesn’t look centered, try a different font size (fs-4, fs-3, etc.) or remove fs-5 to use the default.
+
+2. Use d-inline-flex align-items-center
+Wrap the icon and text in a container with flex alignment:
+<NavLink class="nav-link d-inline-flex align-items-center" href="/events">
+    <span class="bi bi-calendar-event me-2 fs-5" aria-hidden="true"></span> Manage Events
+</NavLink>
+
+This will vertically center the icon and text together.
+
+3. Fine-tune with custom CSS (if needed)
+If you want pixel-perfect alignment, add a custom class:
+/* wwwroot/css/app.css */
+.nav-icon {
+    vertical-align: middle;
+    font-size: 1.25rem; /* adjust as needed */
+}
+
+And use it:
+<span class="bi bi-calendar-event me-2 nav-icon" aria-hidden="true"></span> Manage Events
+
+Summary:
+
+Try wrapping icon and text in a flex container for best alignment.
+Adjust font size or use custom CSS for fine-tuning.
+Avoid using non-existent classes like -fill-nav-menu or fill-nav-menu.
+Let me know if you want a specific look and I can suggest exact CSS!
+
+Prompt:
+Why does 'bootstrap-icons' appear in the NavLink class Intellisense list?
+
+Response:
+
+GitHub Copilot
+Bootstrap’s align-middle and align-top classes are designed for inline elements, but icon fonts sometimes need extra help to align visually with text, especially in navigation menus.
+
+Here’s what you can try:
+
+1. Use align-middle and adjust font size
+If this doesn’t look centered, try a different font size (fs-4, fs-3, etc.) or remove fs-5 to use the default.
+
+2. Use d-inline-flex align-items-center
+Wrap the icon and text in a container with flex alignment:
+
+This will vertically center the icon and text together.
+
+3. Fine-tune with custom CSS (if needed)
+If you want pixel-perfect alignment, add a custom class:
+
+And use it:
+
+Summary:
+
+Try wrapping icon and text in a flex container for best alignment.
+Adjust font size or use custom CSS for fine-tuning.
+Avoid using non-existent classes like -fill-nav-menu or fill-nav-menu.
+Let me know if you want a specific look and I can suggest exact CSS!
+
+Why does 'bootstrap-icons' appear in the NavLink class Intellisense list?
+
+Response:
+bootstrap-icons appears in the NavLink class IntelliSense list because it is a CSS class name defined in the bootstrap-icons.css file that you included in your project. IntelliSense in Visual Studio Code (and similar editors) scans all loaded CSS files and makes their class names available for auto-completion in your HTML and Razor files.
+
+However, bootstrap-icons is just a generic class used by the Bootstrap Icons library for internal purposes.
+To display a specific icon, you must use the correct icon class, such as bi bi-calendar-event.
+The bootstrap-icons class by itself will not display any icon.
+
+Summary:
+
+IntelliSense lists all CSS classes, including utility and library classes.
+Use only the official icon classes (e.g., bi bi-calendar-event) to show icons, not just bootstrap-icons.
+
+Prompt:
+I have tried all of your suggestions and the icon still willl not center on the line with the 'Manage Events' menu text entry.

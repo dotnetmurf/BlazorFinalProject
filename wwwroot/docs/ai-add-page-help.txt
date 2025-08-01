@@ -1,0 +1,729 @@
+Date: 20250715
+Conversation Title: Add Page Help Functionality
+
+Key
+dotnetmurf: - Prompt
+GitHub Copilot: - Response
+
+dotnetmurf: How do I add a 'help' button to the EventsPage? The onclick event should open the ModalDialog component, which will display text information regarding the page's functions.
+
+GitHub Copilot: Here's how to add a help button with a modal dialog to your EventsPage:
+
+**Step 1:** Add the help button and modify the modal dialog in your EventsPage.razor:
+
+````csharp
+<PageTitle>Events List | Events Manager</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">Events List</h3>
+    <button class="btn btn-outline-info btn-sm" @onclick="ShowHelp">
+        <i class="bi bi-question-circle me-1"></i>Help
+    </button>
+</div>
+
+@if (showForm)
+{
+    <EventForm Event="EventState.CurrentEventForm" OnValidSubmitCallback="SaveEventAsync"
+        OnCancelCallback="CancelEditAsync" />
+}
+else
+{
+    // ...existing content...
+}
+
+<ModalDialog @ref="confirmDialog" Title="@dialogTitle" OnConfirm="OnDialogConfirm" OnCancel="ClearPendingDialog">
+    @if (pendingAction == "help")
+    {
+        <div class="help-content">
+            <h5><i class="bi bi-info-circle text-info me-2"></i>Events Page Functions</h5>
+            <hr />
+            <div class="mb-3">
+                <h6><i class="bi bi-plus-circle text-success me-2"></i>Add New Event</h6>
+                <p class="text-muted mb-2">Click the "Add New Event" button to create a new event. Fill in the event details including name, date, location, and notes.</p>
+            </div>
+            <div class="mb-3">
+                <h6><i class="bi bi-pencil text-warning me-2"></i>Edit Event</h6>
+                <p class="text-muted mb-2">Use the "Edit" button on any event card to modify event details. Changes are saved immediately.</p>
+            </div>
+            <div class="mb-3">
+                <h6><i class="bi bi-trash text-danger me-2"></i>Delete Event</h6>
+                <p class="text-muted mb-2">Click "Delete" to remove an event. This action will also remove all associated registrations.</p>
+            </div>
+            <div class="mb-3">
+                <h6><i class="bi bi-eye text-primary me-2"></i>View Details</h6>
+                <p class="text-muted mb-2">Click "View Details" on any event card to see full event information and manage registrations.</p>
+            </div>
+            <div class="mb-3">
+                <h6><i class="bi bi-arrow-down-circle text-secondary me-2"></i>Load More</h6>
+                <p class="text-muted mb-2">Events are loaded in batches. Use "Load More Events" to see additional events when available.</p>
+            </div>
+            <div class="mb-0">
+                <h6><i class="bi bi-database text-info me-2"></i>Sample Data</h6>
+                <p class="text-muted mb-0">Click "Provide Sample Data" to populate the application with example events and registrations for testing.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        @dialogMessage
+    }
+</ModalDialog>
+
+@code {
+    // ...existing variables...
+    private string dialogTitle = "Confirm";
+
+    // ...existing methods...
+
+    private void ShowHelp()
+    {
+        dialogTitle = "Help - Events Page";
+        pendingAction = "help";
+        confirmDialog?.Show();
+    }
+
+    private void ConfirmDelete(Event evt)
+    {
+        eventToDelete = evt;
+        dialogTitle = "Confirm Delete";
+        dialogMessage = "Are you sure you want to delete this event?";
+        pendingAction = "delete";
+        confirmDialog?.Show();
+    }
+
+    private void ConfirmSeedMockData()
+    {
+        dialogTitle = "Confirm Seed Data";
+        dialogMessage = "Are you sure you want to seed mock data? This will overwrite all current events and registrations.";
+        pendingAction = "seed";
+        confirmDialog?.Show();
+    }
+
+    private void ClearPendingDialog()
+    {
+        eventToDelete = null;
+        pendingAction = null;
+        dialogTitle = "Confirm";
+        confirmDialog?.Hide();
+    }
+
+    private async Task OnDialogConfirm()
+    {
+        if (pendingAction == "delete" && eventToDelete is not null)
+        {
+            await EventService.DeleteAsync(eventToDelete.Id);
+            currentPage = 1;
+            await LoadEventsAsync();
+        }
+        else if (pendingAction == "seed")
+        {
+            await MockDataService.SeedAllAsync(async () =>
+            {
+                currentPage = 1;
+                await LoadEventsAsync();
+                registrations = await RegistrationService.GetAllAsync();
+                UpdateEventCounts();
+                StateHasChanged();
+            });
+        }
+        else if (pendingAction == "help")
+        {
+            // Just close the help dialog
+        }
+        ClearPendingDialog();
+    }
+
+    // ...rest of existing code...
+}
+````
+
+**Step 2:** Add CSS styling for the help content (optional - add to your CSS file):
+
+````css
+.help-content h6 {
+    color: #495057;
+    font-weight: 600;
+}
+
+.help-content .text-muted {
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.help-content hr {
+    margin: 0.75rem 0;
+}
+````
+
+**Key Features:**
+
+1. **Help Button**: Positioned in the top-right corner next to the page title
+2. **Reuses Existing Modal**: Uses your existing `ModalDialog` component with conditional content
+3. **Comprehensive Help**: Covers all major functions (Add, Edit, Delete, View Details, Load More, Sample Data)
+4. **Bootstrap Icons**: Uses consistent iconography for each function
+5. **Responsive Design**: Works well on different screen sizes
+6. **Easy to Close**: Users can click the modal's cancel/close button to dismiss
+
+The help button will show detailed information about each function available on the Events page, making your application more user-friendly.
+
+dotnetmurf: is it possible to open the help ModalDialog with only the Cancel btoon showing?
+
+GitHub Copilot: Yes, you can modify the ModalDialog to show only the Cancel button for help content. You have a couple of options:
+
+## **Option 1: Modify ModalDialog Component (Recommended)**
+
+Update your `ModalDialog` component to accept a parameter that controls which buttons to show:
+
+````csharp
+@if (IsVisible)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Title</h5>
+                    <button type="button" class="btn-close" @onclick="OnCancelClicked"></button>
+                </div>
+                <div class="modal-body">
+                    @ChildContent
+                </div>
+                <div class="modal-footer">
+                    @if (ShowConfirmButton)
+                    {
+                        <button type="button" class="btn btn-danger" @onclick="OnConfirmClicked">@ConfirmText</button>
+                    }
+                    <button type="button" class="btn btn-secondary" @onclick="OnCancelClicked">@CancelText</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = "Confirm";
+    [Parameter] public string ConfirmText { get; set; } = "Confirm";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public bool ShowConfirmButton { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool IsVisible { get; set; }
+
+    public void Show() => IsVisible = true;
+    public void Hide() => IsVisible = false;
+
+    private async Task OnConfirmClicked()
+    {
+        await OnConfirm.InvokeAsync();
+        Hide();
+    }
+
+    private async Task OnCancelClicked()
+    {
+        await OnCancel.InvokeAsync();
+        Hide();
+    }
+}
+````
+
+## **Option 2: Update EventsPage to Use the New Parameter**
+
+Then in your EventsPage, modify the ShowHelp method and the ModalDialog usage:
+
+````csharp
+<ModalDialog @ref="confirmDialog" 
+             Title="@dialogTitle" 
+             OnConfirm="OnDialogConfirm" 
+             OnCancel="ClearPendingDialog"
+             ShowConfirmButton="@(pendingAction != "help")"
+             CancelText="@(pendingAction == "help" ? "Close" : "Cancel")">
+    @if (pendingAction == "help")
+    {
+        <div class="help-content">
+            <h5><i class="bi bi-info-circle text-info me-2"></i>Events Page Functions</h5>
+            <hr />
+            <!-- ...existing help content... -->
+        </div>
+    }
+    else
+    {
+        @dialogMessage
+    }
+</ModalDialog>
+
+@code {
+    // ...existing code...
+
+    private void ShowHelp()
+    {
+        dialogTitle = "Help - Events Page";
+        pendingAction = "help";
+        confirmDialog?.Show();
+    }
+
+    // ...rest of existing code...
+}
+````
+
+## **Key Changes:**
+
+1. **`ShowConfirmButton` parameter**: Controls whether the confirm button appears
+2. **Dynamic button text**: Changes "Cancel" to "Close" for help dialog
+3. **Conditional logic**: Only shows confirm button when not displaying help
+
+This approach:
+- ✅ Hides the confirm button for help content
+- ✅ Shows "Close" instead of "Cancel" for better UX
+- ✅ Maintains existing functionality for other dialogs
+- ✅ Keeps the component reusable
+
+The help dialog will now only show a "Close" button, making it clear to users that it's informational content rather than requiring confirmation.
+
+Similar code found with 2 license types
+
+dotnetmurf: I want to use this help ModalDialog in other pages, so which Option do you recommend I use?
+
+GitHub Copilot: I recommend **Option 1** - modifying the ModalDialog component to accept parameters. This is the best approach for reusability across multiple pages.
+
+Here's why Option 1 is better for your use case:
+
+## **Benefits of Option 1:**
+✅ **Reusable across all pages** - Any page can use help dialogs  
+✅ **Clean separation of concerns** - Modal logic stays in the component  
+✅ **Flexible** - Can show different button combinations for different scenarios  
+✅ **Consistent behavior** - Same modal component works everywhere  
+✅ **Easy to maintain** - Changes to modal behavior happen in one place  
+
+## **Complete Implementation:**
+
+**Step 1: Update ModalDialog Component**
+````csharp
+@if (IsVisible)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Title</h5>
+                    <button type="button" class="btn-close" @onclick="OnCancelClicked"></button>
+                </div>
+                <div class="modal-body">
+                    @ChildContent
+                </div>
+                <div class="modal-footer">
+                    @if (ShowConfirmButton)
+                    {
+                        <button type="button" class="btn btn-danger" @onclick="OnConfirmClicked">@ConfirmText</button>
+                    }
+                    <button type="button" class="btn btn-secondary" @onclick="OnCancelClicked">@CancelText</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = "Confirm";
+    [Parameter] public string ConfirmText { get; set; } = "Confirm";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public bool ShowConfirmButton { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool IsVisible { get; set; }
+
+    public void Show() => IsVisible = true;
+    public void Hide() => IsVisible = false;
+
+    private async Task OnConfirmClicked()
+    {
+        await OnConfirm.InvokeAsync();
+        Hide();
+    }
+
+    private async Task OnCancelClicked()
+    {
+        await OnCancel.InvokeAsync();
+        Hide();
+    }
+}
+````
+
+**Step 2: Update EventsPage**
+````csharp
+<ModalDialog @ref="confirmDialog" 
+             Title="@dialogTitle" 
+             OnConfirm="OnDialogConfirm" 
+             OnCancel="ClearPendingDialog"
+             ShowConfirmButton="@(pendingAction != "help")"
+             CancelText="@(pendingAction == "help" ? "Close" : "Cancel")">
+    @if (pendingAction == "help")
+    {
+        <!-- Your existing help content -->
+    }
+    else
+    {
+        @dialogMessage
+    }
+</ModalDialog>
+````
+
+**Step 3: Use in Other Pages** (Example: EventDetailsPage)
+````csharp
+<ModalDialog @ref="helpDialog" 
+             Title="Help - Event Details" 
+             ShowConfirmButton="false"
+             CancelText="Close"
+             OnCancel="CloseHelp">
+    <div class="help-content">
+        <h5><i class="bi bi-info-circle text-info me-2"></i>Event Details Functions</h5>
+        <hr />
+        <div class="mb-3">
+            <h6><i class="bi bi-person-plus text-success me-2"></i>Register for Event</h6>
+            <p class="text-muted mb-2">Click "Register for this Event" to add a new registration.</p>
+        </div>
+        <!-- Add more help content -->
+    </div>
+</ModalDialog>
+
+@code {
+    private ModalDialog? helpDialog;
+
+    private void ShowHelp()
+    {
+        helpDialog?.Show();
+    }
+
+    private void CloseHelp()
+    {
+        helpDialog?.Hide();
+    }
+}
+````
+
+## **Future Usage Examples:**
+- **Help dialogs**: `ShowConfirmButton="false"`, `CancelText="Close"`
+- **Delete confirmations**: `ShowConfirmButton="true"`, `ConfirmText="Delete"`
+- **Save confirmations**: `ShowConfirmButton="true"`, `ConfirmText="Save"`
+
+This approach gives you maximum flexibility and reusability across your entire application.
+
+Similar code found with 2 license types
+
+dotnetmurf: When I click on the help button in the EventDetails page, the ModalDialog shows the help contents for the EventsPage. Can you please help me here?
+
+GitHub Copilot: Looking at your EventDetailsPage.razor, I can see the issue. You have the help modal defined, but you're missing:
+
+1. **The Help button** to trigger the modal
+2. **Complete help content** specific to the Event Details page
+
+Here's the fix:
+
+**Step 1: Add the Help button to the page header**
+
+````csharp
+<PageTitle>Event Details | Events Manager</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="mb-0">Event Details</h3>
+        <a class="btn btn-secondary btn-sm mt-2" href="/events">Back to Events</a>
+    </div>
+    <button class="btn btn-outline-info btn-sm" @onclick="ShowHelp">
+        <i class="bi bi-question-circle me-1"></i>Help
+    </button>
+</div>
+
+@if (eventDetails is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title">@eventDetails.Name</h4>
+            <h6 class="card-text"><strong>Date: </strong>@eventDetails.Date.ToLongDateString()</h6>
+            <p class="card-text"><strong>Location: </strong>@eventDetails.Location</p>
+            <p class="card-text">@eventDetails.Notes</p>
+        </div>
+    </div>
+
+    <!-- Rest of your existing content -->
+}
+````
+
+**Step 2: Update the ModalDialog with complete Event Details help content**
+
+````csharp
+<ModalDialog @ref="helpDialog" 
+             Title="Help - Event Details" 
+             ShowConfirmButton="false"
+             CancelText="Close"
+             OnCancel="CloseHelp">
+    <div class="help-content">
+        <h5><i class="bi bi-info-circle text-info me-2"></i>Event Details Functions</h5>
+        <hr />
+        <div class="mb-3">
+            <h6><i class="bi bi-person-plus text-success me-2"></i>Register for Event</h6>
+            <p class="text-muted mb-2">Click "Register for this Event" to add a new registration. Fill in participant details including name, phone, and email.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-pencil text-warning me-2"></i>Edit Registration</h6>
+            <p class="text-muted mb-2">Use the "Edit" button on any registration card to modify participant details or mark attendance.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-trash text-danger me-2"></i>Delete Registration</h6>
+            <p class="text-muted mb-2">Click "Delete" on a registration card to remove a participant from the event.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-check-circle text-success me-2"></i>Mark Attendance</h6>
+            <p class="text-muted mb-2">Toggle the "Attended Event" checkbox to track which participants actually attended the event.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-arrow-down-circle text-secondary me-2"></i>Load More Registrations</h6>
+            <p class="text-muted mb-2">Registrations are loaded in batches. Use "Load More Registrations" to see additional participants when available.</p>
+        </div>
+        <div class="mb-0">
+            <h6><i class="bi bi-people-fill text-info me-2"></i>Registration Statistics</h6>
+            <p class="text-muted mb-0">View the total number of registered participants and how many actually attended the event.</p>
+        </div>
+    </div>
+</ModalDialog>
+````
+
+**The key issues were:**
+1. **Missing Help Button**: You had the modal but no way to trigger it
+2. **Incomplete Help Content**: The content was just a placeholder
+
+Now when you click the Help button on the Event Details page, it will show help content specific to that page's functions (registrations, attendance, etc.) rather than the Events page content.
+
+dotnetmurf: Great work, Copilot. I now have the Attendance page open in the workspace. Can you help me deploy the hellp functionality in this page, too?
+
+GitHub Copilot: Absolutely! Here's how to add the help functionality to your Attendance page:
+
+**Step 1: Add the Help button to the page header**
+
+````csharp
+<PageTitle>Event Attendance | Events Manager</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="mb-0">
+                    <i class="bi bi-people-fill me-2"></i>Event Attendance Overview
+                </h3>
+                <button class="btn btn-outline-info btn-sm" @onclick="ShowHelp">
+                    <i class="bi bi-question-circle me-1"></i>Help
+                </button>
+            </div>
+            
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3">Loading attendance data...</p>
+                </div>
+            }
+            // ...rest of your existing content...
+        </div>
+    </div>
+</div>
+````
+
+**Step 2: Add the ModalDialog component**
+
+````csharp
+// Add this at the end of your Attendance.razor file, after the closing </div> tags but before @code
+
+<ModalDialog @ref="helpDialog" 
+             Title="Help - Attendance Overview" 
+             ShowConfirmButton="false"
+             CancelText="Close"
+             OnCancel="CloseHelp">
+    <div class="help-content">
+        <h5><i class="bi bi-info-circle text-info me-2"></i>Attendance Page Functions</h5>
+        <hr />
+        <div class="mb-3">
+            <h6><i class="bi bi-eye text-primary me-2"></i>View Event Details</h6>
+            <p class="text-muted mb-2">Click the "Details" button next to any event to view full event information and manage registrations.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-graph-up text-success me-2"></i>Attendance Rates</h6>
+            <p class="text-muted mb-2">Color-coded badges show attendance rates: <span class="badge bg-success">Green ≥80%</span> <span class="badge bg-warning text-dark">Yellow ≥60%</span> <span class="badge bg-danger">Red &lt;60%</span></p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-person-plus-fill text-info me-2"></i>Registration Counts</h6>
+            <p class="text-muted mb-2">Blue badges show the total number of people registered for each event.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-person-check-fill text-success me-2"></i>Attendance Counts</h6>
+            <p class="text-muted mb-2">Green badges show how many registered participants actually attended the event.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-bar-chart text-warning me-2"></i>Summary Statistics</h6>
+            <p class="text-muted mb-2">The bottom panel shows totals across all events: total events, registrations, attendees, and overall attendance rate.</p>
+        </div>
+        <div class="mb-0">
+            <h6><i class="bi bi-plus-circle text-primary me-2"></i>Create Events</h6>
+            <p class="text-muted mb-0">If no events exist, click "Create Your First Event" to get started with event management.</p>
+        </div>
+    </div>
+</ModalDialog>
+
+@code {
+    private List<AttendanceItem> attendanceData = new();
+    private bool isLoading = true;
+    private ModalDialog? helpDialog;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAttendanceDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("scrollToTopComplete");
+        }
+    }
+
+    private void ShowHelp()
+    {
+        helpDialog?.Show();
+    }
+
+    private void CloseHelp()
+    {
+        helpDialog?.Hide();
+    }
+
+    private async Task LoadAttendanceDataAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var events = await EventService.GetAllAsync();
+            var allRegistrations = await RegistrationService.GetAllAsync();
+
+            attendanceData = events.Select(evt => new AttendanceItem
+            {
+                Event = evt,
+                RegistrationCount = allRegistrations.Count(r => r.EventId == evt.Id),
+                AttendeeCount = allRegistrations.Count(r => r.EventId == evt.Id && r.AttendedEvent)
+            })
+            .OrderBy(x => x.Event.Name)
+            .ToList();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private class AttendanceItem
+    {
+        public Event Event { get; set; } = new();
+        public int RegistrationCount { get; set; }
+        public int AttendeeCount { get; set; }
+    }
+}
+````
+
+**Key Features Added:**
+
+1. **Help Button**: Positioned in the top-right corner next to the page title
+2. **Attendance-Specific Help**: Explains the color-coded attendance rates, badge meanings, and statistics
+3. **Visual Examples**: Shows actual badge examples in the help text
+4. **Complete Coverage**: Covers all functions available on the attendance page
+5. **Consistent Styling**: Uses the same help modal pattern as your other pages
+
+The help content is specifically tailored to the Attendance page and explains:
+- How to interpret the color-coded attendance rates
+- What the different badges mean
+- How to navigate to event details
+- Understanding the summary statistics
+- How to create events if none exist
+
+Now your Attendance page will have the same professional help functionality as your other pages!
+
+dotnetmurf: How do I move this button up so it is closer to  Event Attendance Overview label? : <a class="btn btn-secondary btn-sm mt-0" href="/attendance">Go to Attendance</a>
+
+GitHub Copilot: You need to move that button into the same div as the "Event Attendance Overview" header. Here's how to fix it:
+
+````csharp
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="mb-0">
+            <i class="bi bi-people-fill me-2"></i>Event Attendance Overview
+        </h3>
+        <a class="btn btn-secondary btn-sm mt-2" href="/events">Back to Events</a>
+    </div>
+    <button class="btn btn-outline-info btn-sm" @onclick="ShowHelp">
+        <i class="bi bi-question-circle me-1"></i>Help
+    </button>
+</div>
+````
+
+**Key changes:**
+
+1. **Moved the button** into the left `<div>` alongside the header
+2. **Changed the link** from `/attendance` to `/events` (since you're already on the attendance page)
+3. **Changed the text** to "Back to Events" (more logical navigation)
+4. **Added `mt-2`** class for proper spacing below the header
+
+This will position the button directly under the "Event Attendance Overview" title, creating a clean hierarchical layout where the navigation button is grouped with the page title rather than floating separately.
+
+If you want the button to appear on the same line as the header instead, you could use this alternative:
+
+````csharp
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <h3 class="mb-0">
+            <i class="bi bi-people-fill me-2"></i>Event Attendance Overview
+        </h3>
+        <a class="btn btn-secondary btn-sm" href="/events">Back to Events</a>
+    </div>
+    <button class="btn btn-outline-info btn-sm" @onclick="ShowHelp">
+        <i class="bi bi-question-circle me-1"></i>Help
+    </button>
+</div>
+````
+
+Choose whichever layout you prefer!
+
+dotnetmurf: By doing this, it is in the same row as the Event Attendance Overview label. I want it to be located underneath the Event Attendance Overview label and left-aligned with it.
+
+GitHub Copilot: To place the "Back to Events" button underneath the "Event Attendance Overview" label and left-aligned with it, you need to restructure the layout. Here's the fix:
+
+````csharp
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h3 class="mb-2">
+            <i class="bi bi-people-fill me-2"></i>Event Attendance Overview
+        </h3>
+        <a class="btn btn-secondary btn-sm" href="/events">Back to Events</a>
+    </div>
+    <button class="btn btn-outline-info btn-sm" @onclick="ShowHelp">
+        <i class="bi bi-question-circle me-1"></i>Help
+    </button>
+</div>
+````
+
+**Key changes:**
+
+1. **Changed `align-items-center` to `align-items-start`** - This aligns items to the top instead of centering them vertically
+2. **Changed `mb-0` to `mb-2`** on the h3 - This adds margin below the header to create space for the button
+3. **Removed `mt-2`** from the button - Since we added margin to the header instead
+4. **Wrapped both elements in a `<div>`** - This groups them together as one unit on the left side
+
+Now the "Back to Events" button will appear directly underneath the "Event Attendance Overview" header and be left-aligned with it, while the Help button stays in the top-right corner.

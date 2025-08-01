@@ -1,0 +1,63 @@
+/*
+    About Page Styles
+    
+    Purpose: Provides custom styling for the About page component to enhance readability,
+    navigation, and visual presentation of project documentation content.
+    
+    Key Features:
+    - Scroll margin adjustments for anchor navigation with fixed headers
+    - Consistent primary color theming throughout the documentation
+    - Enhanced link styling for better user interaction feedback
+    - Improved list spacing for better content readability
+    - Button styling overrides for consistent brand appearance
+    
+    Navigation Support:
+    - scroll-margin-top: Ensures proper positioning when navigating to anchor sections
+    - Accounts for fixed headers or navigation elements (80px offset)
+    - Smooth scrolling experience for table of contents navigation
+    
+    Color Scheme:
+    - Primary blue (#0d6efd) for consistent brand theming
+    - Hover effects on interactive elements for better UX
+    - Bootstrap color overrides for consistent appearance
+    
+    Typography Enhancements:
+    - List item spacing for improved content scanability
+    - Link hover effects for clear interaction feedback
+    - Consistent text decoration handling
+    
+    Usage: Automatically applied to About.razor component to provide enhanced
+    styling for project documentation, ensuring optimal readability and navigation
+    experience for academic evaluation and portfolio presentation.
+*/
+
+section {
+    scroll-margin-top: 80px;
+}
+
+.text-primary {
+    color: #0d6efd !important;
+}
+
+.btn-outline-primary {
+    color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-outline-primary:hover {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+ul li {
+    margin-bottom: 0.5rem;
+}
+
+a {
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}

@@ -1,0 +1,59 @@
+@*
+    EventCard Component
+    
+    Purpose: Displays a single event in a Bootstrap card format with header, body, and footer sections.
+    
+    Features:
+    - Shows event name in a primary-colored header
+    - Displays event details and statistics in the card body via EventDetails component
+    - Provides action buttons (View Details, Edit, Delete) in the footer via EventCardActions component
+    - Handles navigation to event details page while updating state service with current statistics
+    - Passes through edit and delete event callbacks to parent components
+    
+    Dependencies:
+    - NavigationManager: For programmatic navigation to event details
+    - IHybridEventStateService: For maintaining registration and attendee counts across navigation
+    - EventDetails: Child component that renders event information and statistics
+    - EventCardActions: Child component that renders action buttons with callbacks
+    
+    Usage: Typically used in event listing pages to display multiple events in a grid layout.
+*@
+@inject NavigationManager NavigationManager
+@inject IHybridEventStateService EventState
+
+<div class="card shadow-sm h-100">
+    <div class="card-header bg-primary text-white">
+        <h5 class="card-title mb-0">@Event.Name</h5>
+    </div>
+    <div class="card-body">
+        <EventDetails Event="@Event" Statistics="@Statistics" />
+    </div>
+    <div class="card-footer text-center">
+        <EventCardActions Event="@Event" Statistics="@Statistics" DetailsPageUri="@DetailsPageUri"
+            OnNavigateToDetails="@HandleNavigateToDetails" OnEditEvent="OnEditEvent" OnDeleteEvent="OnDeleteEvent" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Event Event { get; set; } = default!;
+
+    [Parameter]
+    public string DetailsPageUri { get; set; } = "events/details";
+
+    [Parameter]
+    public EventStatistics Statistics { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<Event> OnEditEvent { get; set; }
+
+    [Parameter]
+    public EventCallback<Event> OnDeleteEvent { get; set; }
+
+    private void HandleNavigateToDetails()
+    {
+        EventState.RegistrationCounts[Event.Id] = Statistics.RegistrationCount;
+        EventState.AttendeeCounts[Event.Id] = Statistics.AttendeeCount;
+        NavigationManager.NavigateTo($"{DetailsPageUri}/{Event.Id}");
+    }
+}

@@ -1,0 +1,4210 @@
+Date: 20250722
+Conversation Title: Refactor Services/Interfaces .cs Files
+
+Key
+dotnetmurf: - Prompt
+GitHub Copilot: - Response
+
+dotnetmurf: Can you suggest any refactoring of the code in this file?
+
+GitHub Copilot: Looking at your MockDataService.cs file, I can suggest several refactoring improvements to make the code more maintainable, readable, and efficient:
+
+## 1. Extract Event and Registration Creation Methods
+
+The `SeedRecordsAsync` method is very long. Break it into smaller, focused methods:
+
+````csharp
+namespace BlazorFinalProject.Services.Mock;
+
+public class MockDataService : IMockDataService
+{
+    private readonly ILocalStorageService _localStorage;
+    private const string EventsKey = "events";
+    private const string RegistrationsKey = "registrations";
+
+    public MockDataService(ILocalStorageService localStorage)
+    {
+        _localStorage = localStorage;
+    }
+
+    public async Task SeedRecordsAsync()
+    {
+        await _localStorage.RemoveItemAsync(EventsKey);
+        await _localStorage.RemoveItemAsync(RegistrationsKey);
+
+        var eventIds = CreateEventIds();
+        var initialEvents = CreateInitialEvents(eventIds);
+        var initialRegistrations = CreateInitialRegistrations(eventIds);
+
+        await _localStorage.SetItemAsync(EventsKey, initialEvents);
+        await _localStorage.SetItemAsync(RegistrationsKey, initialRegistrations);
+    }
+
+    private Dictionary<string, Guid> CreateEventIds()
+    {
+        return new Dictionary<string, Guid>
+        {
+            ["devSummit"] = Guid.NewGuid(),
+            ["uxWorkshop"] = Guid.NewGuid(),
+            ["cloudExpo"] = Guid.NewGuid(),
+            ["aiBootcamp"] = Guid.NewGuid(),
+            ["cybersecurityForum"] = Guid.NewGuid(),
+            ["agileDays"] = Guid.NewGuid(),
+            ["mobileDevCon"] = Guid.NewGuid(),
+            ["dataScienceSummit"] = Guid.NewGuid(),
+            ["techLeadersMeetup"] = Guid.NewGuid(),
+            ["startupPitchNight"] = Guid.NewGuid()
+        };
+    }
+
+    private List<Event> CreateInitialEvents(Dictionary<string, Guid> eventIds)
+    {
+        return new List<Event>
+        {
+            new Event { Id = eventIds["devSummit"], Name = "Developer Summit", Date = DateTime.Today.AddDays(-5), Location = "Chicago", Notes = "Tech insights from top minds." },
+            new Event { Id = eventIds["uxWorkshop"], Name = "UX Workshop", Date = DateTime.Today.AddDays(12), Location = "Remote", Notes = "Hands-on UI prototyping." },
+            new Event { Id = eventIds["cloudExpo"], Name = "Cloud Expo", Date = DateTime.Today.AddDays(-2), Location = "San Francisco", Notes = "Latest in cloud technologies." },
+            new Event { Id = eventIds["aiBootcamp"], Name = "AI Bootcamp", Date = DateTime.Today.AddDays(30), Location = "New York", Notes = "Deep dive into AI and ML." },
+            new Event { Id = eventIds["cybersecurityForum"], Name = "Cybersecurity Forum", Date = DateTime.Today.AddDays(15), Location = "Austin", Notes = "Protecting digital assets." },
+            new Event { Id = eventIds["agileDays"], Name = "Agile Days", Date = DateTime.Today.AddDays(25), Location = "Seattle", Notes = "Agile best practices." },
+            new Event { Id = eventIds["mobileDevCon"], Name = "Mobile DevCon", Date = DateTime.Today.AddDays(18), Location = "Boston", Notes = "Mobile app development trends." },
+            new Event { Id = eventIds["dataScienceSummit"], Name = "Data Science Summit", Date = DateTime.Today.AddDays(22), Location = "Denver", Notes = "Big data and analytics." },
+            new Event { Id = eventIds["techLeadersMeetup"], Name = "Tech Leaders Meetup", Date = DateTime.Today.AddDays(10), Location = "Atlanta", Notes = "Networking for tech leaders." },
+            new Event { Id = eventIds["startupPitchNight"], Name = "Startup Pitch Night", Date = DateTime.Today.AddDays(28), Location = "Los Angeles", Notes = "Pitch your startup ideas." }
+        };
+    }
+
+    private List<Registration> CreateInitialRegistrations(Dictionary<string, Guid> eventIds)
+    {
+        var registrationData = GetRegistrationData();
+        var registrations = new List<Registration>();
+
+        foreach (var (eventKey, userData) in registrationData)
+        {
+            var eventId = eventIds[eventKey];
+            foreach (var user in userData)
+            {
+                registrations.Add(new Registration
+                {
+                    Id = Guid.NewGuid(),
+                    EventId = eventId,
+                    UserName = user.Name,
+                    Telephone = user.Phone,
+                    EmailAddress = user.Email,
+                    Notes = user.Notes,
+                    AttendedEvent = user.Attended
+                });
+            }
+        }
+
+        return registrations;
+    }
+
+    // ...existing code...
+}
+````
+
+## 2. Create Data Transfer Objects for Registration Data
+
+Create a simple record to represent user registration data:
+
+````csharp
+// ...existing code...
+
+public record UserRegistrationData(string Name, string Phone, string Email, string Notes, bool Attended);
+
+private Dictionary<string, List<UserRegistrationData>> GetRegistrationData()
+{
+    return new Dictionary<string, List<UserRegistrationData>>
+    {
+        ["devSummit"] = new List<UserRegistrationData>
+        {
+            new("Alice Smith", "312-985-7612", "alice.smith@example.com", "Requested front row seating", true),
+            new("James Wright", "402-555-2345", "james.wright@example.com", "Needs wheelchair access", true),
+            new("Alexander Baker", "402-555-0123", "alexander.baker@example.com", "Needs parking", true),
+            // ... more registrations
+        },
+        ["uxWorkshop"] = new List<UserRegistrationData>
+        {
+            new("John Jones", "312-985-8592", "john.jones@example.com", "Will arrive late", false),
+            // ... more registrations
+        },
+        // ... other events
+    };
+}
+
+// ...existing code...
+````
+
+## 3. Use Constants for Magic Numbers and Strings
+
+````csharp
+public class MockDataService : IMockDataService
+{
+    private readonly ILocalStorageService _localStorage;
+    private const string EventsKey = "events";
+    private const string RegistrationsKey = "registrations";
+    
+    // Date offsets as constants
+    private const int DevSummitDaysOffset = -5;
+    private const int UxWorkshopDaysOffset = 12;
+    private const int CloudExpoDaysOffset = -2;
+    private const int AiBootcampDaysOffset = 30;
+    // ... other constants
+
+    // ...existing code...
+}
+````
+
+## 4. Consider Using a Factory Pattern
+
+For even better organization, consider creating a separate factory class:
+
+````csharp
+public class MockDataFactory
+{
+    public static (List<Event> Events, List<Registration> Registrations) CreateSeedData()
+    {
+        var eventIds = CreateEventIds();
+        var events = CreateEvents(eventIds);
+        var registrations = CreateRegistrations(eventIds);
+        
+        return (events, registrations);
+    }
+
+    // ... factory methods
+}
+````
+
+## 5. Add Configuration Support
+
+Consider making the seed data configurable through JSON files or configuration:
+
+````csharp
+public class MockDataService : IMockDataService
+{
+    private readonly ILocalStorageService _localStorage;
+    private readonly IConfiguration _configuration;
+    
+    public MockDataService(ILocalStorageService localStorage, IConfiguration configuration)
+    {
+        _localStorage = localStorage;
+        _configuration = configuration;
+    }
+
+    // ...existing code...
+}
+````
+
+These refactoring suggestions will make your code:
+- **More maintainable**: Smaller methods with single responsibilities
+- **More readable**: Clear separation of concerns and better organization
+- **More testable**: Individual methods can be unit tested
+- **More flexible**: Easier to modify seed data without touching the main logic
+
+Would you like me to show the complete implementation of any of these refactoring approaches?
+
+dotnetmurf: Can you please show the complete implementation of 4. Consider Using a Factory Pattern using my existing records ion the service?
+
+GitHub Copilot: Here's a complete implementation using the Factory Pattern with your existing records:
+
+## 1. Create the MockDataFactory class
+
+````csharp
+namespace BlazorFinalProject.Services.Mock;
+
+public static class MockDataFactory
+{
+    public static (List<Event> Events, List<Registration> Registrations) CreateSeedData()
+    {
+        var eventIds = CreateEventIds();
+        var events = CreateEvents(eventIds);
+        var registrations = CreateRegistrations(eventIds);
+        
+        return (events, registrations);
+    }
+
+    private static Dictionary<string, Guid> CreateEventIds()
+    {
+        return new Dictionary<string, Guid>
+        {
+            ["devSummit"] = Guid.NewGuid(),
+            ["uxWorkshop"] = Guid.NewGuid(),
+            ["cloudExpo"] = Guid.NewGuid(),
+            ["aiBootcamp"] = Guid.NewGuid(),
+            ["cybersecurityForum"] = Guid.NewGuid(),
+            ["agileDays"] = Guid.NewGuid(),
+            ["mobileDevCon"] = Guid.NewGuid(),
+            ["dataScienceSummit"] = Guid.NewGuid(),
+            ["techLeadersMeetup"] = Guid.NewGuid(),
+            ["startupPitchNight"] = Guid.NewGuid()
+        };
+    }
+
+    private static List<Event> CreateEvents(Dictionary<string, Guid> eventIds)
+    {
+        return new List<Event>
+        {
+            new Event { Id = eventIds["devSummit"], Name = "Developer Summit", Date = DateTime.Today.AddDays(-5), Location = "Chicago", Notes = "Tech insights from top minds." },
+            new Event { Id = eventIds["uxWorkshop"], Name = "UX Workshop", Date = DateTime.Today.AddDays(12), Location = "Remote", Notes = "Hands-on UI prototyping." },
+            new Event { Id = eventIds["cloudExpo"], Name = "Cloud Expo", Date = DateTime.Today.AddDays(-2), Location = "San Francisco", Notes = "Latest in cloud technologies." },
+            new Event { Id = eventIds["aiBootcamp"], Name = "AI Bootcamp", Date = DateTime.Today.AddDays(30), Location = "New York", Notes = "Deep dive into AI and ML." },
+            new Event { Id = eventIds["cybersecurityForum"], Name = "Cybersecurity Forum", Date = DateTime.Today.AddDays(15), Location = "Austin", Notes = "Protecting digital assets." },
+            new Event { Id = eventIds["agileDays"], Name = "Agile Days", Date = DateTime.Today.AddDays(25), Location = "Seattle", Notes = "Agile best practices." },
+            new Event { Id = eventIds["mobileDevCon"], Name = "Mobile DevCon", Date = DateTime.Today.AddDays(18), Location = "Boston", Notes = "Mobile app development trends." },
+            new Event { Id = eventIds["dataScienceSummit"], Name = "Data Science Summit", Date = DateTime.Today.AddDays(22), Location = "Denver", Notes = "Big data and analytics." },
+            new Event { Id = eventIds["techLeadersMeetup"], Name = "Tech Leaders Meetup", Date = DateTime.Today.AddDays(10), Location = "Atlanta", Notes = "Networking for tech leaders." },
+            new Event { Id = eventIds["startupPitchNight"], Name = "Startup Pitch Night", Date = DateTime.Today.AddDays(28), Location = "Los Angeles", Notes = "Pitch your startup ideas." }
+        };
+    }
+
+    private static List<Registration> CreateRegistrations(Dictionary<string, Guid> eventIds)
+    {
+        var registrationData = GetRegistrationData();
+        var registrations = new List<Registration>();
+
+        foreach (var (eventKey, userDataList) in registrationData)
+        {
+            var eventId = eventIds[eventKey];
+            foreach (var userData in userDataList)
+            {
+                registrations.Add(new Registration
+                {
+                    Id = Guid.NewGuid(),
+                    EventId = eventId,
+                    UserName = userData.Name,
+                    Telephone = userData.Phone,
+                    EmailAddress = userData.Email,
+                    Notes = userData.Notes,
+                    AttendedEvent = userData.Attended
+                });
+            }
+        }
+
+        return registrations;
+    }
+
+    private record UserRegistrationData(string Name, string Phone, string Email, string Notes, bool Attended);
+
+    private static Dictionary<string, List<UserRegistrationData>> GetRegistrationData()
+    {
+        return new Dictionary<string, List<UserRegistrationData>>
+        {
+            ["devSummit"] = new List<UserRegistrationData>
+            {
+                new("Alice Smith", "312-985-7612", "alice.smith@example.com", "Requested front row seating", true),
+                new("James Wright", "402-555-2345", "james.wright@example.com", "Needs wheelchair access", true),
+                new("Alexander Baker", "402-555-0123", "alexander.baker@example.com", "Needs parking", true),
+                new("Joseph Stewart", "402-555-1123", "joseph.stewart@example.com", "Panelist", true),
+                new("Elijah Cooper", "402-555-2123", "elijah.cooper@example.com", "Needs invoice", true),
+                new("Levi Watson", "402-555-3123", "levi.watson@example.com", "Prefers email updates", true),
+                new("Parker Mitchell", "402-555-4123", "parker.mitchell@example.com", "Needs invoice", true),
+                new("Luke Powell", "402-555-5123", "luke.powell@example.com", "Needs parking", true),
+                new("Zoey Foster", "402-555-6123", "zoey.foster@example.com", "VIP guest", true)
+            },
+            ["uxWorkshop"] = new List<UserRegistrationData>
+            {
+                new("John Jones", "312-985-8592", "john.jones@example.com", "Will arrive late", false),
+                new("Mia Davis", "402-555-7890", "mia.davis@example.com", "Bringing guest", false),
+                new("Ella Carter", "402-555-0234", "ella.carter@example.com", "Vegetarian meal", false),
+                new("Penelope Sanchez", "402-555-1234", "penelope.sanchez@example.com", "Speaker", false),
+                new("Sofia Richardson", "402-555-2234", "sofia.richardson@example.com", "Returning attendee", false),
+                new("Aurora Brooks", "402-555-3234", "aurora.brooks@example.com", "Allergic to nuts", false),
+                new("Paisley Simmons", "402-555-4234", "paisley.simmons@example.com", "Bringing guest", false),
+                new("Ellie Long", "402-555-5234", "ellie.long@example.com", "First time attendee", false),
+                new("Nathan Simmons", "402-555-6234", "nathan.simmons@example.com", "Vegetarian meal", false)
+            },
+            ["cloudExpo"] = new List<UserRegistrationData>
+            {
+                new("Mike Parry", "708-274-8726", "mike.parry@example.com", "Needs projector access", true),
+                new("Benjamin Hall", "402-555-1212", "benjamin.hall@example.com", "Prefers email updates", true),
+                new("Sebastian Perez", "402-555-0345", "sebastian.perez@example.com", "VIP guest", true),
+                new("Samuel Morris", "402-555-1345", "samuel.morris@example.com", "VIP guest", true),
+                new("Aiden Cox", "402-555-2345", "aiden.cox@example.com", "Panelist", true),
+                new("Hudson Kelly", "402-555-3345", "hudson.kelly@example.com", "Needs wheelchair access", true),
+                new("Grayson Foster", "402-555-4345", "grayson.foster@example.com", "Prefers email updates", true),
+                new("Jackson Patterson", "402-555-5345", "jackson.patterson@example.com", "Needs invoice", true),
+                new("Savannah Bryant", "402-555-6345", "savannah.bryant@example.com", "Needs parking", true)
+            },
+            ["aiBootcamp"] = new List<UserRegistrationData>
+            {
+                new("Lisa Wilson", "224-845-0087", "lisa.wilson@example.com", "Prefers digital materials", false),
+                new("Charlotte Young", "402-555-3412", "charlotte.young@example.com", "Allergic to nuts", false),
+                new("Grace Turner", "402-555-0456", "grace.turner@example.com", "First time attendee", false),
+                new("Lily Rogers", "402-555-1456", "lily.rogers@example.com", "Vegetarian meal", false),
+                new("Camila Howard", "402-555-2456", "camila.howard@example.com", "Speaker", false),
+                new("Savannah Sanders", "402-555-3456", "savannah.sanders@example.com", "Returning attendee", false),
+                new("Aubrey Bryant", "402-555-4456", "aubrey.bryant@example.com", "Allergic to nuts", false),
+                new("Layla Hughes", "402-555-5456", "layla.hughes@example.com", "Bringing guest", false),
+                new("Leah Russell", "402-555-6456", "leah.russell@example.com", "First time attendee", false)
+            },
+            ["cybersecurityForum"] = new List<UserRegistrationData>
+            {
+                new("Ethan Brown", "402-555-1234", "ethan.brown@example.com", "VIP guest", false),
+                new("Lucas Hernandez", "402-555-4567", "lucas.hernandez@example.com", "Needs invoice", false),
+                new("Daniel Phillips", "402-555-0567", "daniel.phillips@example.com", "Needs invoice", false),
+                new("Owen Reed", "402-555-1567", "owen.reed@example.com", "Needs parking", false),
+                new("Carter Ward", "402-555-2567", "carter.ward@example.com", "VIP guest", false),
+                new("Gabriel Price", "402-555-3567", "gabriel.price@example.com", "Panelist", false),
+                new("Madison Russell", "402-555-4567", "madison.russell@example.com", "Needs wheelchair access", false),
+                new("Avery Butler", "402-555-5567", "avery.butler@example.com", "Prefers email updates", false),
+                new("Wyatt Griffin", "402-555-6567", "wyatt.griffin@example.com", "Needs invoice", false)
+            },
+            ["agileDays"] = new List<UserRegistrationData>
+            {
+                new("Sophia Lee", "402-555-4321", "sophia.lee@example.com", "Vegetarian meal", false),
+                new("Amelia King", "402-555-5678", "amelia.king@example.com", "Returning attendee", false),
+                new("Chloe Campbell", "402-555-0678", "chloe.campbell@example.com", "Bringing guest", false),
+                new("Zoe Cook", "402-555-1678", "zoe.cook@example.com", "First time attendee", false),
+                new("Riley Torres", "402-555-2678", "riley.torres@example.com", "Vegetarian meal", false),
+                new("Violet Bennett", "402-555-3678", "violet.bennett@example.com", "Speaker", false),
+                new("Easton Griffin", "402-555-4678", "easton.griffin@example.com", "Returning attendee", false),
+                new("Harper Barnes", "402-555-5678", "harper.barnes@example.com", "Allergic to nuts", false),
+                new("Hazel Hayes", "402-555-6678", "hazel.hayes@example.com", "Bringing guest", false)
+            },
+            ["mobileDevCon"] = new List<UserRegistrationData>
+            {
+                new("Noah Kim", "402-555-6789", "noah.kim@example.com", "Needs parking", false),
+                new("Henry Scott", "402-555-6712", "henry.scott@example.com", "Prefers phone contact", false),
+                new("Matthew Parker", "402-555-0789", "matthew.parker@example.com", "Prefers email updates", false),
+                new("Mason Bell", "402-555-1789", "mason.bell@example.com", "Prefers phone contact", false),
+                new("Wyatt Peterson", "402-555-2789", "wyatt.peterson@example.com", "Needs parking", false),
+                new("Lincoln Wood", "402-555-3789", "lincoln.wood@example.com", "VIP guest", false),
+                new("Penelope Hayes", "402-555-4789", "penelope.hayes@example.com", "Panelist", false),
+                new("Ella Brooks", "402-555-5789", "ella.brooks@example.com", "Needs wheelchair access", false),
+                new("Julian Jenkins", "402-555-6789", "julian.jenkins@example.com", "Prefers email updates", false)
+            },
+            ["dataScienceSummit"] = new List<UserRegistrationData>
+            {
+                new("Olivia Chen", "402-555-9876", "olivia.chen@example.com", "Speaker", false),
+                new("Emily Green", "402-555-7823", "emily.green@example.com", "Needs gluten-free meal", false),
+                new("Scarlett Evans", "402-555-0890", "scarlett.evans@example.com", "Allergic to nuts", false),
+                new("Layla Murphy", "402-555-1890", "layla.murphy@example.com", "Needs gluten-free meal", false),
+                new("Nora Gray", "402-555-2890", "nora.gray@example.com", "First time attendee", false),
+                new("Brooklyn Barnes", "402-555-3890", "brooklyn.barnes@example.com", "Vegetarian meal", false),
+                new("Hudson Morris", "402-555-4890", "hudson.morris@example.com", "Speaker", false),
+                new("Carter Reed", "402-555-5890", "carter.reed@example.com", "Returning attendee", false),
+                new("Aurora Perry", "402-555-6890", "aurora.perry@example.com", "Allergic to nuts", false)
+            },
+            ["techLeadersMeetup"] = new List<UserRegistrationData>
+            {
+                new("William Clark", "402-555-7654", "william.clark@example.com", "First time attendee", false),
+                new("Jack Adams", "402-555-8934", "jack.adams@example.com", "Speaker", false),
+                new("David Edwards", "402-555-0901", "david.edwards@example.com", "Needs wheelchair access", false),
+                new("Logan Bailey", "402-555-1901", "logan.bailey@example.com", "Speaker", false),
+                new("Julian Ramirez", "402-555-2901", "julian.ramirez@example.com", "Needs invoice", false),
+                new("Jayden Ross", "402-555-3901", "jayden.ross@example.com", "Needs parking", false),
+                new("Lillian Jenkins", "402-555-4901", "lillian.jenkins@example.com", "VIP guest", false),
+                new("Scarlett Bennett", "402-555-5901", "scarlett.bennett@example.com", "Panelist", false),
+                new("Mason Powell", "402-555-6901", "mason.powell@example.com", "Needs wheelchair access", false)
+            },
+            ["startupPitchNight"] = new List<UserRegistrationData>
+            {
+                new("Ava Patel", "402-555-3456", "ava.patel@example.com", "Panelist", false),
+                new("Harper Nelson", "402-555-9045", "harper.nelson@example.com", "Panelist", false),
+                new("Victoria Collins", "402-555-1012", "victoria.collins@example.com", "Returning attendee", false),
+                new("Aria Rivera", "402-555-2012", "aria.rivera@example.com", "Panelist", false),
+                new("Hazel James", "402-555-3012", "hazel.james@example.com", "Bringing guest", false),
+                new("Stella Henderson", "402-555-4012", "stella.henderson@example.com", "First time attendee", false),
+                new("Mila Perry", "402-555-5012", "mila.perry@example.com", "Vegetarian meal", false),
+                new("Henry Wood", "402-555-6012", "henry.wood@example.com", "Speaker", false),
+                new("Layla Long", "402-555-7012", "layla.long@example.com", "Returning attendee", false)
+            }
+        };
+    }
+}
+````
+
+## 2. Update the MockDataService to use the Factory
+
+````csharp
+namespace BlazorFinalProject.Services.Mock;
+
+public class MockDataService : IMockDataService
+{
+    private readonly ILocalStorageService _localStorage;
+    private const string EventsKey = "events";
+    private const string RegistrationsKey = "registrations";
+
+    public MockDataService(ILocalStorageService localStorage)
+    {
+        _localStorage = localStorage;
+    }
+
+    public async Task SeedRecordsAsync()
+    {
+        await _localStorage.RemoveItemAsync(EventsKey);
+        await _localStorage.RemoveItemAsync(RegistrationsKey);
+
+        var (events, registrations) = MockDataFactory.CreateSeedData();
+
+        await _localStorage.SetItemAsync(EventsKey, events);
+        await _localStorage.SetItemAsync(RegistrationsKey, registrations);
+    }
+
+    public async Task SeedAllAsync(Func<Task>? onSeedComplete = null)
+    {
+        await SeedRecordsAsync();
+
+        if (onSeedComplete is not null)
+        {
+            await onSeedComplete();
+        }
+    }
+}
+````
+
+## Benefits of this Factory Pattern approach:
+
+1. **Separation of Concerns**: Data creation logic is separated from the service logic
+2. **Testability**: The factory can be easily unit tested independently
+3. **Maintainability**: All seed data is organized in one place
+4. **Reusability**: The factory can be used by other services or tests
+5. **Clean Service**: The `MockDataService` is now much cleaner and focused on its core responsibility
+6. **Data Organization**: Registration data is grouped by event, making it easier to understand relationships
+
+The factory pattern makes your code much more maintainable and follows the Single Responsibility Principle, where the service handles storage operations and the factory handles data creation.
+
+dotnetmurf: Thank you for the Factory Pattern enhancement, works nice. Now, Can you suggest any refactoring of the code in this file?
+
+GitHub Copilot: Looking at your LocalStorageEventService.cs file, I can suggest several refactoring improvements to make the code more maintainable, efficient, and robust:
+
+## 1. Extract Constants and Remove Magic Strings
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public class LocalStorageEventService : IEventService
+{
+    private readonly ILocalStorageService _localStorage;
+    private const string EventsKey = "events";
+    private const string RegistrationsKey = "registrations";
+
+    // ...existing code...
+}
+````
+
+## 2. Remove Duplicate GetPagedAsync Method
+
+You have two `GetPagedAsync` methods that are nearly identical. Keep only the one with `CancellationToken`:
+
+````csharp
+// ...existing code...
+
+public async Task<PagedResult<Event>> GetPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+{
+    var allEvents = await GetAllAsync();
+
+    return await PagedResult<Event>.CreatePagesAsync(
+        allEvents,
+        pageNumber,
+        pageSize,
+        e => e.Name, // Order by event name
+        cancellationToken);
+}
+
+// Remove the duplicate method without CancellationToken
+
+// ...existing code...
+````
+
+## 3. Add Error Handling and Validation
+
+````csharp
+// ...existing code...
+
+public async Task<Event> GetByIdAsync(Guid id)
+{
+    if (id == Guid.Empty)
+        throw new ArgumentException("Event ID cannot be empty", nameof(id));
+
+    var events = await GetAllAsync();
+    var foundEvent = events.FirstOrDefault(e => e.Id == id);
+    
+    if (foundEvent == null)
+        throw new InvalidOperationException($"Event with ID {id} not found");
+        
+    return foundEvent;
+}
+
+public async Task<Event> AddAsync(Event evt)
+{
+    if (evt == null)
+        throw new ArgumentNullException(nameof(evt));
+    
+    if (string.IsNullOrWhiteSpace(evt.Name))
+        throw new ArgumentException("Event name is required", nameof(evt));
+
+    var events = await GetAllAsync();
+    evt.Id = Guid.NewGuid();
+    events.Add(evt);
+    await _localStorage.SetItemAsync(EventsKey, events);
+    return evt;
+}
+
+public async Task<Event> UpdateAsync(Event eventToUpdate)
+{
+    if (eventToUpdate == null)
+        throw new ArgumentNullException(nameof(eventToUpdate));
+    
+    if (eventToUpdate.Id == Guid.Empty)
+        throw new ArgumentException("Event ID cannot be empty", nameof(eventToUpdate));
+    
+    if (string.IsNullOrWhiteSpace(eventToUpdate.Name))
+        throw new ArgumentException("Event name is required", nameof(eventToUpdate));
+
+    var events = await GetAllAsync();
+    var existingEvent = events.FirstOrDefault(e => e.Id == eventToUpdate.Id);
+    
+    if (existingEvent == null)
+        throw new InvalidOperationException($"Event with ID {eventToUpdate.Id} not found");
+
+    // Update properties
+    existingEvent.Name = eventToUpdate.Name;
+    existingEvent.Date = eventToUpdate.Date;
+    existingEvent.Location = eventToUpdate.Location;
+    existingEvent.Notes = eventToUpdate.Notes;
+
+    await _localStorage.SetItemAsync(EventsKey, events);
+    return existingEvent;
+}
+
+public async Task DeleteAsync(Guid id)
+{
+    if (id == Guid.Empty)
+        throw new ArgumentException("Event ID cannot be empty", nameof(id));
+
+    await DeleteAssociatedRegistrationsAsync(id);
+
+    var events = await GetAllAsync();
+    var removedCount = events.RemoveAll(e => e.Id == id);
+    
+    if (removedCount == 0)
+        throw new InvalidOperationException($"Event with ID {id} not found");
+
+    await _localStorage.SetItemAsync(EventsKey, events);
+}
+
+// ...existing code...
+````
+
+## 4. Extract Registration Service Logic
+
+Create a separate method to handle registration operations and consider dependency injection:
+
+````csharp
+// ...existing code...
+
+private async Task DeleteAssociatedRegistrationsAsync(Guid eventId)
+{
+    var registrations = await GetRegistrationsAsync();
+    
+    var registrationsToDelete = registrations.Where(r => r.EventId == eventId).ToList();
+    if (registrationsToDelete.Any())
+    {
+        var updatedRegistrations = registrations.Except(registrationsToDelete).ToList();
+        await _localStorage.SetItemAsync(RegistrationsKey, updatedRegistrations);
+    }
+}
+
+private async Task<List<Registration>> GetRegistrationsAsync()
+{
+    var registrations = await _localStorage.GetItemAsync<List<Registration>>(RegistrationsKey);
+    return registrations ?? new List<Registration>();
+}
+
+// ...existing code...
+````
+
+## 5. Add Logging Support
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public class LocalStorageEventService : IEventService
+{
+    private readonly ILocalStorageService _localStorage;
+    private readonly ILogger<LocalStorageEventService> _logger;
+    private const string EventsKey = "events";
+    private const string RegistrationsKey = "registrations";
+
+    public LocalStorageEventService(ILocalStorageService localStorage, ILogger<LocalStorageEventService> logger)
+    {
+        _localStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public async Task<Event> UpdateAsync(Event eventToUpdate)
+    {
+        // ...validation code...
+
+        try
+        {
+            var events = await GetAllAsync();
+            var existingEvent = events.FirstOrDefault(e => e.Id == eventToUpdate.Id);
+            
+            if (existingEvent == null)
+            {
+                _logger.LogWarning("Attempted to update non-existent event with ID: {EventId}", eventToUpdate.Id);
+                throw new InvalidOperationException($"Event with ID {eventToUpdate.Id} not found");
+            }
+
+            _logger.LogInformation("Updating event {EventId}: {EventName}", eventToUpdate.Id, eventToUpdate.Name);
+
+            // Update properties...
+            
+            await _localStorage.SetItemAsync(EventsKey, events);
+            _logger.LogInformation("Successfully updated event {EventId}", eventToUpdate.Id);
+            
+            return existingEvent;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating event {EventId}", eventToUpdate.Id);
+            throw;
+        }
+    }
+
+    // ...existing code...
+}
+````
+
+## 6. Add Configuration Support for Page Sizes
+
+````csharp
+public class LocalStorageEventService : IEventService
+{
+    private readonly ILocalStorageService _localStorage;
+    private readonly ILogger<LocalStorageEventService> _logger;
+    private const string EventsKey = "events";
+    private const string RegistrationsKey = "registrations";
+    private const int DefaultPageSize = 10;
+    private const int MaxPageSize = 100;
+
+    // ...existing code...
+
+    public async Task<PagedResult<Event>> GetPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+    {
+        // Validate and constrain page size
+        if (pageSize <= 0) pageSize = DefaultPageSize;
+        if (pageSize > MaxPageSize) pageSize = MaxPageSize;
+        if (pageNumber <= 0) pageNumber = 1;
+
+        var allEvents = await GetAllAsync();
+
+        return await PagedResult<Event>.CreatePagesAsync(
+            allEvents,
+            pageNumber,
+            pageSize,
+            e => e.Name,
+            cancellationToken);
+    }
+
+    // ...existing code...
+}
+````
+
+## 7. Consider Using a Result Pattern for Better Error Handling
+
+````csharp
+public async Task<Event?> TryGetByIdAsync(Guid id)
+{
+    if (id == Guid.Empty) return null;
+    
+    var events = await GetAllAsync();
+    return events.FirstOrDefault(e => e.Id == id);
+}
+
+public async Task<bool> ExistsAsync(Guid id)
+{
+    if (id == Guid.Empty) return false;
+    
+    var events = await GetAllAsync();
+    return events.Any(e => e.Id == id);
+}
+````
+
+## 8. Complete Refactored Service
+
+Here's the complete refactored service with all improvements:
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public class LocalStorageEventService : IEventService
+{
+    private readonly ILocalStorageService _localStorage;
+    private readonly ILogger<LocalStorageEventService> _logger;
+    private const string EventsKey = "events";
+    private const string RegistrationsKey = "registrations";
+    private const int DefaultPageSize = 10;
+    private const int MaxPageSize = 100;
+
+    public LocalStorageEventService(ILocalStorageService localStorage, ILogger<LocalStorageEventService> logger)
+    {
+        _localStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public async Task<List<Event>> GetAllAsync()
+    {
+        try
+        {
+            var events = await _localStorage.GetItemAsync<List<Event>>(EventsKey);
+            return events ?? new List<Event>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving all events from local storage");
+            return new List<Event>();
+        }
+    }
+
+    public async Task<Event> GetByIdAsync(Guid id)
+    {
+        if (id == Guid.Empty)
+            throw new ArgumentException("Event ID cannot be empty", nameof(id));
+
+        var events = await GetAllAsync();
+        var foundEvent = events.FirstOrDefault(e => e.Id == id);
+        
+        if (foundEvent == null)
+            throw new InvalidOperationException($"Event with ID {id} not found");
+            
+        return foundEvent;
+    }
+
+    public async Task<Event?> TryGetByIdAsync(Guid id)
+    {
+        if (id == Guid.Empty) return null;
+        
+        var events = await GetAllAsync();
+        return events.FirstOrDefault(e => e.Id == id);
+    }
+
+    public async Task<bool> ExistsAsync(Guid id)
+    {
+        if (id == Guid.Empty) return false;
+        
+        var events = await GetAllAsync();
+        return events.Any(e => e.Id == id);
+    }
+
+    public async Task<Event> AddAsync(Event evt)
+    {
+        if (evt == null)
+            throw new ArgumentNullException(nameof(evt));
+        
+        if (string.IsNullOrWhiteSpace(evt.Name))
+            throw new ArgumentException("Event name is required", nameof(evt));
+
+        try
+        {
+            var events = await GetAllAsync();
+            evt.Id = Guid.NewGuid();
+            events.Add(evt);
+            await _localStorage.SetItemAsync(EventsKey, events);
+            
+            _logger.LogInformation("Successfully added event {EventId}: {EventName}", evt.Id, evt.Name);
+            return evt;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding event: {EventName}", evt.Name);
+            throw;
+        }
+    }
+
+    public async Task<Event> UpdateAsync(Event eventToUpdate)
+    {
+        if (eventToUpdate == null)
+            throw new ArgumentNullException(nameof(eventToUpdate));
+        
+        if (eventToUpdate.Id == Guid.Empty)
+            throw new ArgumentException("Event ID cannot be empty", nameof(eventToUpdate));
+        
+        if (string.IsNullOrWhiteSpace(eventToUpdate.Name))
+            throw new ArgumentException("Event name is required", nameof(eventToUpdate));
+
+        try
+        {
+            var events = await GetAllAsync();
+            var existingEvent = events.FirstOrDefault(e => e.Id == eventToUpdate.Id);
+            
+            if (existingEvent == null)
+            {
+                _logger.LogWarning("Attempted to update non-existent event with ID: {EventId}", eventToUpdate.Id);
+                throw new InvalidOperationException($"Event with ID {eventToUpdate.Id} not found");
+            }
+
+            _logger.LogInformation("Updating event {EventId}: {EventName}", eventToUpdate.Id, eventToUpdate.Name);
+
+            existingEvent.Name = eventToUpdate.Name;
+            existingEvent.Date = eventToUpdate.Date;
+            existingEvent.Location = eventToUpdate.Location;
+            existingEvent.Notes = eventToUpdate.Notes;
+
+            await _localStorage.SetItemAsync(EventsKey, events);
+            _logger.LogInformation("Successfully updated event {EventId}", eventToUpdate.Id);
+            
+            return existingEvent;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating event {EventId}", eventToUpdate.Id);
+            throw;
+        }
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        if (id == Guid.Empty)
+            throw new ArgumentException("Event ID cannot be empty", nameof(id));
+
+        try
+        {
+            await DeleteAssociatedRegistrationsAsync(id);
+
+            var events = await GetAllAsync();
+            var removedCount = events.RemoveAll(e => e.Id == id);
+            
+            if (removedCount == 0)
+                throw new InvalidOperationException($"Event with ID {id} not found");
+
+            await _localStorage.SetItemAsync(EventsKey, events);
+            _logger.LogInformation("Successfully deleted event {EventId} and its registrations", id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting event {EventId}", id);
+            throw;
+        }
+    }
+
+    public async Task<PagedResult<Event>> GetPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+    {
+        if (pageSize <= 0) pageSize = DefaultPageSize;
+        if (pageSize > MaxPageSize) pageSize = MaxPageSize;
+        if (pageNumber <= 0) pageNumber = 1;
+
+        var allEvents = await GetAllAsync();
+
+        return await PagedResult<Event>.CreatePagesAsync(
+            allEvents,
+            pageNumber,
+            pageSize,
+            e => e.Name,
+            cancellationToken);
+    }
+
+    private async Task DeleteAssociatedRegistrationsAsync(Guid eventId)
+    {
+        try
+        {
+            var registrations = await GetRegistrationsAsync();
+            var registrationsToDelete = registrations.Where(r => r.EventId == eventId).ToList();
+            
+            if (registrationsToDelete.Any())
+            {
+                var updatedRegistrations = registrations.Except(registrationsToDelete).ToList();
+                await _localStorage.SetItemAsync(RegistrationsKey, updatedRegistrations);
+                _logger.LogInformation("Deleted {Count} registrations for event {EventId}", registrationsToDelete.Count, eventId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting registrations for event {EventId}", eventId);
+            throw;
+        }
+    }
+
+    private async Task<List<Registration>> GetRegistrationsAsync()
+    {
+        var registrations = await _localStorage.GetItemAsync<List<Registration>>(RegistrationsKey);
+        return registrations ?? new List<Registration>();
+    }
+}
+````
+
+## Key Improvements:
+
+1. **Better Error Handling**: Comprehensive validation and exception handling
+2. **Logging**: Structured logging for monitoring and debugging
+3. **Code Deduplication**: Removed duplicate methods
+4. **Constants**: Extracted magic strings and numbers
+5. **Helper Methods**: Added utility methods like `TryGetByIdAsync` and `ExistsAsync`
+6. **Parameter Validation**: Consistent validation with proper page size constraints
+7. **Exception Safety**: Try-catch blocks with proper error logging
+8. **Single Responsibility**: Each method has a clear, focused purpose
+
+These refactoring improvements make the service more robust, maintainable, and production-ready.
+
+dotnetmurf: Looks good. If I implement these changes, will my ILocalStorageEventService interface need updating?
+
+GitHub Copilot: Yes, you'll need to update your `IEventService` interface (I assume that's what you meant) to include the new methods I suggested. Here are the interface changes needed:
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public interface IEventService
+{
+    // Existing methods
+    Task<List<Event>> GetAllAsync();
+    Task<Event> GetByIdAsync(Guid id);
+    Task<Event> AddAsync(Event evt);
+    Task<Event> UpdateAsync(Event eventToUpdate);
+    Task DeleteAsync(Guid id);
+    Task<PagedResult<Event>> GetPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default);
+
+    // New methods to add
+    Task<Event?> TryGetByIdAsync(Guid id);
+    Task<bool> ExistsAsync(Guid id);
+}
+````
+
+## Key Changes to the Interface:
+
+1. **Remove duplicate `GetPagedAsync`** - Keep only the version with `CancellationToken`
+2. **Add `TryGetByIdAsync`** - Returns nullable `Event?` instead of throwing exceptions
+3. **Add `ExistsAsync`** - Boolean method to check if an event exists
+
+## Alternative Approach - Minimal Changes
+
+If you want to minimize interface changes and maintain backward compatibility, you could:
+
+1. **Keep the existing interface unchanged**
+2. **Make the new methods internal or private** in the service implementation
+3. **Only expose them when needed**
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public interface IEventService
+{
+    Task<List<Event>> GetAllAsync();
+    Task<Event> GetByIdAsync(Guid id);
+    Task<Event> AddAsync(Event evt);
+    Task<Event> UpdateAsync(Event eventToUpdate);
+    Task DeleteAsync(Guid id);
+    Task<PagedResult<Event>> GetPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default);
+}
+````
+
+And in your service implementation, make the helper methods private:
+
+````csharp
+public class LocalStorageEventService : IEventService
+{
+    // ... existing implementation ...
+
+    // Keep these as private helper methods
+    private async Task<Event?> TryGetByIdAsync(Guid id)
+    {
+        // ... implementation ...
+    }
+
+    private async Task<bool> ExistsAsync(Guid id)
+    {
+        // ... implementation ...
+    }
+}
+````
+
+## Recommendation
+
+I'd suggest **updating the interface** to include the new methods because:
+
+1. **Better API Design** - `TryGetByIdAsync` provides a non-throwing alternative
+2. **More Flexible** - `ExistsAsync` is useful for validation scenarios
+3. **Future-Proof** - Other implementations of `IEventService` would benefit from these methods
+
+The changes are minimal and provide better functionality for consumers of your service.
+
+dotnetmurf: 
+
+Great work on the event services. Now, can you suggest any refactoring of the code in this file?
+
+GitHub Copilot: Looking at your LocalStorageRegistrationService.cs file, I can suggest several refactoring improvements similar to what we did with the EventService. Here are the key areas for improvement:
+
+## 1. Add Error Handling, Validation, and Logging
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public class LocalStorageRegistrationService : IRegistrationService
+{
+    private readonly ILocalStorageService _localStorage;
+    private readonly ILogger<LocalStorageRegistrationService> _logger;
+    private const string RegistrationsKey = "registrations";
+    private const int DefaultPageSize = 10;
+    private const int MaxPageSize = 100;
+
+    public LocalStorageRegistrationService(ILocalStorageService localStorage, ILogger<LocalStorageRegistrationService> logger)
+    {
+        _localStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public async Task<List<Registration>> GetAllAsync()
+    {
+        try
+        {
+            var registrations = await _localStorage.GetItemAsync<List<Registration>>(RegistrationsKey);
+            return registrations ?? new List<Registration>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving all registrations from local storage");
+            return new List<Registration>();
+        }
+    }
+
+    public async Task<List<Registration>> GetAllForEventAsync(Guid eventId)
+    {
+        if (eventId == Guid.Empty)
+            throw new ArgumentException("Event ID cannot be empty", nameof(eventId));
+
+        try
+        {
+            var allRegistrations = await GetAllAsync();
+            var eventRegistrations = allRegistrations.Where(r => r.EventId == eventId).ToList();
+            
+            _logger.LogDebug("Retrieved {Count} registrations for event {EventId}", eventRegistrations.Count, eventId);
+            return eventRegistrations;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving registrations for event {EventId}", eventId);
+            throw;
+        }
+    }
+
+    public async Task<Registration> GetByIdAsync(Guid id)
+    {
+        if (id == Guid.Empty)
+            throw new ArgumentException("Registration ID cannot be empty", nameof(id));
+
+        var registrations = await GetAllAsync();
+        var registration = registrations.FirstOrDefault(r => r.Id == id);
+        
+        if (registration == null)
+            throw new InvalidOperationException($"Registration with ID {id} not found");
+            
+        return registration;
+    }
+
+    public async Task<Registration?> TryGetByIdAsync(Guid id)
+    {
+        if (id == Guid.Empty) return null;
+        
+        var registrations = await GetAllAsync();
+        return registrations.FirstOrDefault(r => r.Id == id);
+    }
+
+    public async Task<bool> ExistsAsync(Guid id)
+    {
+        if (id == Guid.Empty) return false;
+        
+        var registrations = await GetAllAsync();
+        return registrations.Any(r => r.Id == id);
+    }
+
+    public async Task<Registration> AddAsync(Registration registration)
+    {
+        if (registration == null)
+            throw new ArgumentNullException(nameof(registration));
+        
+        if (registration.EventId == Guid.Empty)
+            throw new ArgumentException("Event ID cannot be empty", nameof(registration));
+        
+        if (string.IsNullOrWhiteSpace(registration.UserName))
+            throw new ArgumentException("User name is required", nameof(registration));
+        
+        if (string.IsNullOrWhiteSpace(registration.EmailAddress))
+            throw new ArgumentException("Email address is required", nameof(registration));
+
+        try
+        {
+            var registrations = await GetAllAsync();
+            registration.Id = Guid.NewGuid();
+            registrations.Add(registration);
+            await _localStorage.SetItemAsync(RegistrationsKey, registrations);
+            
+            _logger.LogInformation("Successfully added registration {RegistrationId} for user {UserName} to event {EventId}", 
+                registration.Id, registration.UserName, registration.EventId);
+            return registration;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding registration for user {UserName} to event {EventId}", 
+                registration.UserName, registration.EventId);
+            throw;
+        }
+    }
+
+    public async Task<Registration> UpdateAsync(Registration registration)
+    {
+        if (registration == null)
+            throw new ArgumentNullException(nameof(registration));
+        
+        if (registration.Id == Guid.Empty)
+            throw new ArgumentException("Registration ID cannot be empty", nameof(registration));
+        
+        if (registration.EventId == Guid.Empty)
+            throw new ArgumentException("Event ID cannot be empty", nameof(registration));
+        
+        if (string.IsNullOrWhiteSpace(registration.UserName))
+            throw new ArgumentException("User name is required", nameof(registration));
+        
+        if (string.IsNullOrWhiteSpace(registration.EmailAddress))
+            throw new ArgumentException("Email address is required", nameof(registration));
+
+        try
+        {
+            var registrations = await GetAllAsync();
+            var index = registrations.FindIndex(r => r.Id == registration.Id);
+            
+            if (index < 0)
+            {
+                _logger.LogWarning("Attempted to update non-existent registration with ID: {RegistrationId}", registration.Id);
+                throw new InvalidOperationException($"Registration with ID {registration.Id} not found");
+            }
+
+            _logger.LogInformation("Updating registration {RegistrationId} for user {UserName}", 
+                registration.Id, registration.UserName);
+
+            registrations[index] = registration;
+            await _localStorage.SetItemAsync(RegistrationsKey, registrations);
+            
+            _logger.LogInformation("Successfully updated registration {RegistrationId}", registration.Id);
+            return registration;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating registration {RegistrationId}", registration.Id);
+            throw;
+        }
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        if (id == Guid.Empty)
+            throw new ArgumentException("Registration ID cannot be empty", nameof(id));
+
+        try
+        {
+            var registrations = await GetAllAsync();
+            var removedCount = registrations.RemoveAll(r => r.Id == id);
+            
+            if (removedCount == 0)
+                throw new InvalidOperationException($"Registration with ID {id} not found");
+
+            await _localStorage.SetItemAsync(RegistrationsKey, registrations);
+            _logger.LogInformation("Successfully deleted registration {RegistrationId}", id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting registration {RegistrationId}", id);
+            throw;
+        }
+    }
+
+    public async Task<PagedResult<Registration>> GetPagedForEventAsync(Guid eventId, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+    {
+        if (eventId == Guid.Empty)
+            throw new ArgumentException("Event ID cannot be empty", nameof(eventId));
+
+        // Validate and constrain page size
+        if (pageSize <= 0) pageSize = DefaultPageSize;
+        if (pageSize > MaxPageSize) pageSize = MaxPageSize;
+        if (pageNumber <= 0) pageNumber = 1;
+
+        var allRegistrations = await GetAllForEventAsync(eventId);
+
+        return await PagedResult<Registration>.CreatePagesAsync(
+            allRegistrations,
+            pageNumber,
+            pageSize,
+            r => r.UserName,
+            cancellationToken);
+    }
+
+    // Additional utility methods
+    public async Task<int> GetRegistrationCountForEventAsync(Guid eventId)
+    {
+        if (eventId == Guid.Empty)
+            throw new ArgumentException("Event ID cannot be empty", nameof(eventId));
+
+        var registrations = await GetAllForEventAsync(eventId);
+        return registrations.Count;
+    }
+
+    public async Task<List<Registration>> GetAttendedRegistrationsForEventAsync(Guid eventId)
+    {
+        if (eventId == Guid.Empty)
+            throw new ArgumentException("Event ID cannot be empty", nameof(eventId));
+
+        var registrations = await GetAllForEventAsync(eventId);
+        return registrations.Where(r => r.AttendedEvent).ToList();
+    }
+
+    public async Task<bool> IsUserRegisteredForEventAsync(Guid eventId, string emailAddress)
+    {
+        if (eventId == Guid.Empty)
+            throw new ArgumentException("Event ID cannot be empty", nameof(eventId));
+        
+        if (string.IsNullOrWhiteSpace(emailAddress))
+            throw new ArgumentException("Email address cannot be empty", nameof(emailAddress));
+
+        var registrations = await GetAllForEventAsync(eventId);
+        return registrations.Any(r => r.EmailAddress.Equals(emailAddress, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public async Task<PagedResult<Registration>> GetPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+    {
+        // Validate and constrain page size
+        if (pageSize <= 0) pageSize = DefaultPageSize;
+        if (pageSize > MaxPageSize) pageSize = MaxPageSize;
+        if (pageNumber <= 0) pageNumber = 1;
+
+        var allRegistrations = await GetAllAsync();
+
+        return await PagedResult<Registration>.CreatePagesAsync(
+            allRegistrations,
+            pageNumber,
+            pageSize,
+            r => r.UserName,
+            cancellationToken);
+    }
+}
+````
+
+## 2. Update the Interface
+
+You'll need to update your `IRegistrationService` interface to include the new methods:
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public interface IRegistrationService
+{
+    // Existing methods
+    Task<List<Registration>> GetAllAsync();
+    Task<List<Registration>> GetAllForEventAsync(Guid eventId);
+    Task<Registration> GetByIdAsync(Guid id);
+    Task<Registration> AddAsync(Registration registration);
+    Task<Registration> UpdateAsync(Registration registration);
+    Task DeleteAsync(Guid id);
+    Task<PagedResult<Registration>> GetPagedForEventAsync(Guid eventId, int pageNumber, int pageSize, CancellationToken cancellationToken = default);
+
+    // New utility methods
+    Task<Registration?> TryGetByIdAsync(Guid id);
+    Task<bool> ExistsAsync(Guid id);
+    Task<int> GetRegistrationCountForEventAsync(Guid eventId);
+    Task<List<Registration>> GetAttendedRegistrationsForEventAsync(Guid eventId);
+    Task<bool> IsUserRegisteredForEventAsync(Guid eventId, string emailAddress);
+    Task<PagedResult<Registration>> GetPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default);
+}
+````
+
+## Key Improvements Made:
+
+1. **Consistent Error Handling**: Added validation and exception handling similar to EventService
+2. **Logging Support**: Added structured logging throughout
+3. **Method Consistency**: Changed `AddAsync` and `UpdateAsync` to return the registration object
+4. **Additional Utility Methods**: 
+   - `GetRegistrationCountForEventAsync()` - Get count of registrations for an event
+   - `GetAttendedRegistrationsForEventAsync()` - Get only attended registrations
+   - `IsUserRegisteredForEventAsync()` - Check if user is already registered
+   - `GetPagedAsync()` - Get all registrations with pagination
+5. **Parameter Validation**: Comprehensive validation for all input parameters
+6. **Improved Pagination**: Added `CancellationToken` support and page size constraints
+7. **Better Variable Names**: More descriptive variable names
+8. **Exception Safety**: Try-catch blocks with proper error logging
+9. **Null Safety**: Better null handling throughout
+
+These improvements make the registration service more robust, maintainable, and consistent with modern C# practices.
+
+dotnetmurf: Is your code in the above section:'1. Add Error Handling, Validation, and Logging' the complete updated Registration service implementation?
+
+GitHub Copilot: Yes, the code I provided in section "1. Add Error Handling, Validation, and Logging" is the complete updated Registration service implementation. It includes all the methods from your original service plus the new utility methods and improvements.
+
+However, I notice there's a **filename mismatch** that should be corrected. Your file is named RegistrationService.cs but the class is named `LocalStorageRegistrationService`. For consistency, you should either:
+
+## Option 1: Rename the file to match the class
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public class LocalStorageRegistrationService : IRegistrationService
+{
+    // ... all the implementation code I provided above
+}
+````
+
+## Option 2: Rename the class to match the file
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public class RegistrationService : IRegistrationService
+{
+    private readonly ILocalStorageService _localStorage;
+    private readonly ILogger<RegistrationService> _logger;
+    
+    public RegistrationService(ILocalStorageService localStorage, ILogger<RegistrationService> logger)
+    {
+        _localStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+    
+    // ... rest of the implementation
+}
+````
+
+## Complete Method Summary
+
+The complete implementation includes:
+
+✅ **Original Methods (Enhanced)**:
+- `GetAllAsync()`
+- `GetAllForEventAsync()`
+- `GetByIdAsync()`
+- `AddAsync()` (now returns Registration)
+- `UpdateAsync()` (now returns Registration)
+- `DeleteAsync()`
+- `GetPagedForEventAsync()` (with CancellationToken)
+
+✅ **New Utility Methods**:
+- `TryGetByIdAsync()` - Non-throwing version
+- `ExistsAsync()` - Check if registration exists
+- `GetRegistrationCountForEventAsync()` - Get count for event
+- `GetAttendedRegistrationsForEventAsync()` - Get attended only
+- `IsUserRegisteredForEventAsync()` - Check if user is registered
+- `GetPagedAsync()` - General pagination
+
+✅ **Improvements Added**:
+- Comprehensive error handling and validation
+- Structured logging throughout
+- Parameter validation
+- Exception safety with try-catch blocks
+- Page size constraints
+- Consistent return types
+
+So yes, it's the complete implementation with all your original functionality plus the enhancements!
+
+dotnetmurf: I have made your above implementation changes and now receive these errors on build, can you please help me? PS M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject> dotnet build
+Restore complete (0.4s)
+  BlazorFinalProject failed with 10 error(s) and 25 warning(s) (1.2s)
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Models\Registration.cs(14,23): warning CS8618: Non-nullable property 'UserName' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Models\Registration.cs(19,23): warning CS8618: Non-nullable property 'Telephone' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Models\Registration.cs(24,23): warning CS8618: Non-nullable property 'EmailAddress' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Models\Registration.cs(27,23): warning CS8618: Non-nullable property 'Notes' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Models\Event.cs(11,23): warning CS8618: Non-nullable property 'Name' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Models\Event.cs(18,23): warning CS8618: Non-nullable property 'Location' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Models\Event.cs(21,23): warning CS8618: Non-nullable property 'Notes' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\HybridRegistrationStateService.cs(47,12): warning CS8618: Non-nullable field '_autoSaveTimer' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the field as nullable.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\HybridEventStateService.cs(55,12): warning CS8618: Non-nullable field '_autoSaveTimer' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the field as nullable.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\HybridEventStateService.cs(64,35): warning CS8622: Nullability of reference types in type of parameter 'sender' of 'void HybridEventStateService.OnAutoSaveTimerElapsed(object sender, ElapsedEventArgs e)' doesn't match the target delegate 'ElapsedEventHandler' (possibly because of nullability attributes).
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\RegistrationService.cs(18,86): error CS0103: The name 'RegistrationsKey' does not exist in the current context
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Components\Events\EventCard.razor(27,24): warning CS1998: This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread.        
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\RegistrationService.cs(97,46): error CS0103: The name 'RegistrationsKey' does not exist in the current context
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\HybridRegistrationStateService.cs(77,19): warning CS1998: This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Components\Registrations\RegistrationForm.razor(165,35): warning CS1998: This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\RegistrationService.cs(143,46): error CS0103: The name 'RegistrationsKey' does not exist in the current context
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\RegistrationService.cs(168,46): error CS0103: The name 'RegistrationsKey' does not exist in the current context
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\RegistrationService.cs(184,39): error CS0103: The name 'DefaultPageSize' does not exist in the current context
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\RegistrationService.cs(185,24): error CS0103: The name 'MaxPageSize' does not exist in the current context
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\RegistrationService.cs(185,48): error CS0103: The name 'MaxPageSize' does not exist in the current context
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Components\Registrations\RegistrationForm.razor(240,24): warning CS8601: Possible null reference assignment.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Components\Registrations\RegistrationForm.razor(241,25): warning CS8601: Possible null reference assignment.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Components\Registrations\RegistrationForm.razor(242,28): warning CS8601: Possible null reference assignment.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Components\Registrations\RegistrationForm.razor(243,21): warning CS8601: Possible null reference assignment.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Components\Registrations\RegistrationForm.razor(250,36): warning CS8602: Dereference of a possibly null reference.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Components\Registrations\RegistrationForm.razor(234,38): warning CS1998: This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Pages\Events\EventDetailsPage.razor(131,19): warning CS8618: Non-nullable field 'eventDetails' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the field as nullable.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Pages\Events\EventDetailsPage.razor(134,26): warning CS8618: Non-nullable field 'newRegistration' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the field as nullable.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\RegistrationService.cs(232,39): error CS0103: The name 'DefaultPageSize' does not exist in the current context
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\RegistrationService.cs(233,24): error CS0103: The name 'MaxPageSize' does not exist in the current context
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\RegistrationService.cs(233,48): error CS0103: The name 'MaxPageSize' does not exist in the current context
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Components\Events\EventForm.razor(167,20): warning CS8601: Possible null reference assignment.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Components\Events\EventForm.razor(169,24): warning CS8601: Possible null reference assignment.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Components\Events\EventForm.razor(170,21): warning CS8601: Possible null reference assignment.
+    M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Pages\Events\EventsPage.razor(322,26): warning CS0168: The variable 'ex' is declared but never used       
+
+Build failed with 10 error(s) and 25 warning(s) in 1.8s
+
+GitHub Copilot: The errors are due to missing constants in your `RegistrationService.cs` file. Here's the fix:
+
+## Fix the Missing Constants
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public class RegistrationService : IRegistrationService
+{
+    private readonly ILocalStorageService _localStorage;
+    private readonly ILogger<RegistrationService> _logger;
+    
+    // Add these missing constants
+    private const string RegistrationsKey = "registrations";
+    private const int DefaultPageSize = 10;
+    private const int MaxPageSize = 100;
+
+    public RegistrationService(ILocalStorageService localStorage, ILogger<RegistrationService> logger)
+    {
+        _localStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    // ... rest of your implementation
+}
+````
+
+## Also Fix the UpdateAsync Method
+
+I notice in your current file there's an incomplete `UpdateAsync` method. Here's the complete version:
+
+````csharp
+public async Task<Registration> UpdateAsync(Registration registration)
+{
+    if (registration == null)
+        throw new ArgumentNullException(nameof(registration));
+    
+    if (registration.Id == Guid.Empty)
+        throw new ArgumentException("Registration ID cannot be empty", nameof(registration));
+    
+    if (registration.EventId == Guid.Empty)
+        throw new ArgumentException("Event ID cannot be empty", nameof(registration));
+    
+    if (string.IsNullOrWhiteSpace(registration.UserName))
+        throw new ArgumentException("User name is required", nameof(registration));
+    
+    if (string.IsNullOrWhiteSpace(registration.EmailAddress))
+        throw new ArgumentException("Email address is required", nameof(registration));
+
+    try
+    {
+        var registrations = await GetAllAsync();
+        var index = registrations.FindIndex(r => r.Id == registration.Id);
+        
+        if (index < 0)
+        {
+            _logger.LogWarning("Attempted to update non-existent registration with ID: {RegistrationId}", registration.Id);
+            throw new InvalidOperationException($"Registration with ID {registration.Id} not found");
+        }
+
+        _logger.LogInformation("Updating registration {RegistrationId} for user {UserName}", 
+            registration.Id, registration.UserName);
+
+        registrations[index] = registration;
+        await _localStorage.SetItemAsync(RegistrationsKey, registrations);
+        
+        _logger.LogInformation("Successfully updated registration {RegistrationId}", registration.Id);
+        return registration;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error updating registration {RegistrationId}", registration.Id);
+        throw;
+    }
+}
+````
+
+## Update Program.cs Service Registration
+
+Your Program.cs should register the correct service classes:
+
+````csharp
+namespace BlazorFinalProject
+{
+    public class Program
+    {
+        public static async Task Main(string[] args)
+        {
+            var builder = WebAssemblyHostBuilder.CreateDefault(args);
+            builder.RootComponents.Add<App>("#app");
+            builder.RootComponents.Add<HeadOutlet>("head::after");
+
+            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+
+            // Register Blazored.LocalStorage
+            builder.Services.AddBlazoredLocalStorage();
+
+            // Make sure these match your actual service class names
+            builder.Services.AddScoped<IEventService, LocalStorageEventService>();
+            builder.Services.AddScoped<IRegistrationService, RegistrationService>();
+            builder.Services.AddScoped<IMockDataService, MockDataService>();
+            builder.Services.AddScoped<IHybridEventStateService, HybridEventStateService>();
+            builder.Services.AddScoped<IHybridRegistrationStateService, HybridRegistrationStateService>();
+
+            await builder.Build().RunAsync();
+        }
+    }
+}
+````
+
+## Optional: Fix Model Nullable Warnings
+
+If you want to address the nullable warnings on your models, you can add the `required` modifier:
+
+````csharp
+public class Event
+{
+    public Guid Id { get; set; }
+    public required string Name { get; set; }
+    public DateTime Date { get; set; }
+    public required string Location { get; set; }
+    public required string Notes { get; set; }
+}
+````
+
+````csharp
+public class Registration
+{
+    public Guid Id { get; set; }
+    public Guid EventId { get; set; }
+    public required string UserName { get; set; }
+    public required string Telephone { get; set; }
+    public required string EmailAddress { get; set; }
+    public required string Notes { get; set; }
+    public bool AttendedEvent { get; set; }
+}
+````
+
+After making these changes, your build should succeed. The main issue was the missing constants in the `RegistrationService` class.
+
+Similar code found with 2 license types
+
+dotnetmurf: I implemented your recommended RegistrationService changes. The builld suceeds. In the browser, when trying to add a new registration to an event in the EventDetailsPage, I get this error in the browser console; can you help me here? info: BlazorFinalProject.Components.Registrations.RegistrationForm[0]
+      RegistrationForm initialized - CurrentRegistrationForm: (null) (ID: 00000000-0000-0000-0000-000000000000) dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Components.Registrations.RegistrationForm[0]
+      Saving registration: a22 (ID: 00000000-0000-0000-0000-000000000000) dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Components.Registrations.RegistrationForm[0]
+      Adding new registration with generated ID: d520a74e-dc1c-44d5-aea3-b043c2df1af6 dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Services.RegistrationService[0]
+      Successfully added registration 3efbdd66-ea57-4032-9ae2-4b583945e84f for user a22 to event 2b60460b-25b6-4c09-be7d-e62fcd75b074 dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Components.Registrations.RegistrationForm[0]
+      Created new registration with ID: 3efbdd66-ea57-4032-9ae2-4b583945e84f dotnet.runtime.d1pzlaz2ez.js:3:171638
+fail: BlazorFinalProject.Components.Registrations.RegistrationForm[0]
+      Error saving registration with ID: 00000000-0000-0000-0000-000000000000
+System.ArgumentException: Event ID cannot be empty (Parameter 'registration')
+   at BlazorFinalProject.Services.RegistrationService.AddAsync(Registration registration) in M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Services\RegistrationService.cs:line 89
+   at BlazorFinalProject.Pages.Events.EventDetailsPage.SubmitRegistrationAsync(Registration reg) in M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Pages\Events\EventDetailsPage.razor:line 223
+   at Microsoft.AspNetCore.Components.ComponentBase.CallStateHasChangedOnAsyncCompletion(Task task)
+   at BlazorFinalProject.Components.Registrations.RegistrationForm.HandleSubmitAsync() in M:\VSCodeRepos\MSFullStackDev\Course04\BlazorFinalProject\Components\Registrations\RegistrationForm.razor:line 214 dotnet.runtime.d1pzlaz2ez.js:3:171638
+
+
+GitHub Copilot: Looking at the error and the code, I can see the issue. In your EventDetailsPage.razor, the `SubmitRegistrationAsync` method is trying to add `RegistrationState.CurrentRegistrationForm` instead of the `reg` parameter that was passed to it, and there's also a mismatch in the registration object being used.
+
+Here's the fix:
+
+## Fix the SubmitRegistrationAsync Method
+
+````csharp
+@code {
+    // ...existing code...
+
+    private async Task SubmitRegistrationAsync(Registration reg)
+    {
+        try
+        {
+            // Use the reg parameter passed from the form, not RegistrationState.CurrentRegistrationForm
+            await RegistrationService.AddAsync(reg);
+
+            // Reset to first page and reload
+            currentRegistrationPage = 1;
+            await LoadRegistrationsAsync();
+            showForm = false;
+            
+            // Clear the registration state after successful submission
+            await RegistrationState.ResetRegistrationFormAsync();
+        }
+        catch (Exception ex)
+        {
+            // Handle the error appropriately
+            Console.WriteLine($"Error submitting registration: {ex.Message}");
+            // You might want to show a toast notification or error message to the user
+        }
+    }
+
+    private async Task ShowRegistrationForm()
+    {
+        await RegistrationState.InitializeForNewRegistrationAsync(EventId);
+        newRegistration = new Registration 
+        { 
+            EventId = EventId,
+            UserName = string.Empty,
+            Telephone = string.Empty,
+            EmailAddress = string.Empty,
+            Notes = string.Empty,
+            AttendedEvent = false
+        };
+        showForm = true;
+    }
+
+    // ...existing code...
+}
+````
+
+## Alternative Fix - If you want to use RegistrationState
+
+If your `RegistrationForm` is designed to work with `RegistrationState.CurrentRegistrationForm`, then you should ensure the state is properly set:
+
+````csharp
+@code {
+    // ...existing code...
+
+    private async Task SubmitRegistrationAsync(Registration reg)
+    {
+        try
+        {
+            // Make sure the EventId is set on the registration state
+            if (RegistrationState.CurrentRegistrationForm != null)
+            {
+                RegistrationState.CurrentRegistrationForm.EventId = EventId;
+                await RegistrationService.AddAsync(RegistrationState.CurrentRegistrationForm);
+            }
+            else
+            {
+                // Fallback to using the passed parameter
+                reg.EventId = EventId;
+                await RegistrationService.AddAsync(reg);
+            }
+
+            // Reset to first page and reload
+            currentRegistrationPage = 1;
+            await LoadRegistrationsAsync();
+            showForm = false;
+            
+            // Clear the registration state
+            await RegistrationState.ResetRegistrationFormAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error submitting registration: {ex.Message}");
+        }
+    }
+
+    // ...existing code...
+}
+````
+
+## Fix Model Initialization
+
+Also, make sure your models have proper initialization. Update your model properties:
+
+````csharp
+public class Registration
+{
+    public Guid Id { get; set; }
+    public Guid EventId { get; set; }
+    public string UserName { get; set; } = string.Empty;
+    public string Telephone { get; set; } = string.Empty;
+    public string EmailAddress { get; set; } = string.Empty;
+    public string Notes { get; set; } = string.Empty;
+    public bool AttendedEvent { get; set; }
+}
+````
+
+## Update the Field Declaration
+
+Also fix the field declaration issue by making them nullable or initializing them:
+
+````csharp
+@code {
+    [Parameter]
+    public Guid EventId { get; set; }
+    
+    private Event? eventDetails;
+    private List<Registration> registrations = new();
+    private bool showForm = false;
+    private Registration? newRegistration;
+
+    // ...rest of the code...
+}
+````
+
+The main issue is that you're passing the `reg` parameter to `SubmitRegistrationAsync`, but then trying to use `RegistrationState.CurrentRegistrationForm` instead. Pick one approach and be consistent throughout your application. The first fix I provided (using the `reg` parameter) is the simplest and most straightforward solution.
+
+dotnetmurf: I am using RegistrationState with this service, so can you please provide me a roadmap havinbg the complete code updates required fo any files?
+
+GitHub Copilot: Looking at your code, I can see you're using `RegistrationState` but there's a mismatch between the parameter passed to `SubmitRegistrationAsync` and what's being used inside it. Here's a complete roadmap with all the necessary code updates:
+
+## Roadmap for Complete RegistrationState Integration
+
+### 1. Update EventDetailsPage.razor - Fix SubmitRegistrationAsync Method
+
+````csharp
+@code {
+    [Parameter]
+    public Guid EventId { get; set; }
+    private Event? eventDetails;
+    private List<Registration> registrations = new();
+    private bool showForm = false;
+    private Registration? newRegistration;
+
+    // Registration counts
+    private int registrationCount { get; set; }
+    private int attendeeCount { get; set; }
+
+    // Pagination properties for registrations
+    private int currentRegistrationPage = 1;
+    private int registrationPageSize = 4;
+    private int totalRegistrations = 0;
+    private bool isLoadingRegistrations = false;
+    private bool hasMoreRegistrations => registrations.Count < totalRegistrations;
+    private ModalDialog? helpDialog;
+
+    protected override async Task OnInitializedAsync()
+    {
+        eventDetails = await EventService.GetByIdAsync(EventId);
+        await LoadRegistrationsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("scrollToTopComplete");
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("scrollToTopComplete");
+    }
+    
+    private async Task LoadRegistrationsAsync(bool loadMore = false)
+    {
+        isLoadingRegistrations = true;
+        StateHasChanged();
+
+        try
+        {
+            var pagedResult = await RegistrationService.GetPagedForEventAsync(EventId, currentRegistrationPage, registrationPageSize);
+
+            if (loadMore)
+            {
+                registrations.AddRange(pagedResult.Items);
+            }
+            else
+            {
+                registrations = pagedResult.Items;
+            }
+
+            totalRegistrations = pagedResult.TotalCount;
+            registrationCount = totalRegistrations;
+            EventState.RegistrationCounts[EventId] = registrationCount;
+
+            var allRegistrations = await RegistrationService.GetAllForEventAsync(EventId);
+            attendeeCount = allRegistrations.Count(r => r.AttendedEvent == true);
+            EventState.AttendeeCounts[EventId] = attendeeCount;
+        }
+        finally
+        {
+            isLoadingRegistrations = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMoreRegistrationsAsync()
+    {
+        if (hasMoreRegistrations && !isLoadingRegistrations)
+        {
+            currentRegistrationPage++;
+            await LoadRegistrationsAsync(loadMore: true);
+        }
+    }
+
+    private async Task ShowRegistrationForm()
+    {
+        await RegistrationState.InitializeForNewRegistrationAsync(EventId);
+        newRegistration = new Registration 
+        { 
+            EventId = EventId,
+            UserName = string.Empty,
+            Telephone = string.Empty,
+            EmailAddress = string.Empty,
+            Notes = string.Empty,
+            AttendedEvent = false
+        };
+        showForm = true;
+    }
+
+    // FIX: This method needs to use RegistrationState properly
+    private async Task SubmitRegistrationAsync(Registration reg)
+    {
+        try
+        {
+            // Ensure the EventId is set on the state object
+            if (RegistrationState.CurrentRegistrationForm != null)
+            {
+                RegistrationState.CurrentRegistrationForm.EventId = EventId;
+                await RegistrationService.AddAsync(RegistrationState.CurrentRegistrationForm);
+            }
+            else
+            {
+                // Fallback - shouldn't happen if state is working properly
+                reg.EventId = EventId;
+                await RegistrationService.AddAsync(reg);
+            }
+
+            // Reset to first page and reload
+            currentRegistrationPage = 1;
+            await LoadRegistrationsAsync();
+            showForm = false;
+            
+            // Clear the registration state
+            await RegistrationState.ResetRegistrationFormAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error submitting registration: {ex.Message}");
+            // TODO: Show user-friendly error message
+        }
+    }
+
+    private async Task CancelRegistrationAsync()
+    {
+        await RegistrationState.ResetRegistrationFormAsync();
+        showForm = false;
+    }
+
+    private async Task RefreshRegistrations()
+    {
+        currentRegistrationPage = 1;
+        await LoadRegistrationsAsync();
+    }
+
+    private void ShowHelp()
+    {
+        helpDialog?.Show();
+    }
+
+    private void CloseHelp()
+    {
+        helpDialog?.Hide();
+    }
+}
+````
+
+### 2. Update IHybridRegistrationStateService Interface
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public interface IHybridRegistrationStateService
+{
+    Registration? CurrentRegistrationForm { get; set; }
+    bool IsEditing { get; }
+    
+    Task InitializeForNewRegistrationAsync(Guid eventId);
+    Task InitializeForEditRegistrationAsync(Registration registration);
+    Task ResetRegistrationFormAsync();
+    Task SaveRegistrationFormAsync();
+    Task<bool> HasUnsavedChangesAsync();
+}
+````
+
+### 3. Update HybridRegistrationStateService Implementation
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public class HybridRegistrationStateService : IHybridRegistrationStateService, IDisposable
+{
+    private readonly ILocalStorageService _localStorage;
+    private readonly ILogger<HybridRegistrationStateService> _logger;
+    private Timer? _autoSaveTimer;
+    private const string RegistrationFormKey = "currentRegistrationForm";
+    private const int AutoSaveIntervalMs = 30000; // 30 seconds
+
+    public Registration? CurrentRegistrationForm { get; set; }
+    public bool IsEditing => CurrentRegistrationForm?.Id != Guid.Empty;
+
+    public HybridRegistrationStateService(ILocalStorageService localStorage, ILogger<HybridRegistrationStateService> logger)
+    {
+        _localStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        InitializeAutoSave();
+    }
+
+    public async Task InitializeForNewRegistrationAsync(Guid eventId)
+    {
+        try
+        {
+            CurrentRegistrationForm = new Registration
+            {
+                Id = Guid.Empty, // Will be set when saving
+                EventId = eventId,
+                UserName = string.Empty,
+                Telephone = string.Empty,
+                EmailAddress = string.Empty,
+                Notes = string.Empty,
+                AttendedEvent = false
+            };
+
+            await SaveToLocalStorageAsync();
+            _logger.LogInformation("Initialized new registration form for event {EventId}", eventId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing new registration form for event {EventId}", eventId);
+            throw;
+        }
+    }
+
+    public async Task InitializeForEditRegistrationAsync(Registration registration)
+    {
+        try
+        {
+            if (registration == null)
+                throw new ArgumentNullException(nameof(registration));
+
+            // Create a copy to avoid modifying the original
+            CurrentRegistrationForm = new Registration
+            {
+                Id = registration.Id,
+                EventId = registration.EventId,
+                UserName = registration.UserName,
+                Telephone = registration.Telephone,
+                EmailAddress = registration.EmailAddress,
+                Notes = registration.Notes,
+                AttendedEvent = registration.AttendedEvent
+            };
+
+            await SaveToLocalStorageAsync();
+            _logger.LogInformation("Initialized edit registration form for registration {RegistrationId}", registration.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing edit registration form for registration {RegistrationId}", registration?.Id);
+            throw;
+        }
+    }
+
+    public async Task ResetRegistrationFormAsync()
+    {
+        try
+        {
+            CurrentRegistrationForm = null;
+            await _localStorage.RemoveItemAsync(RegistrationFormKey);
+            _logger.LogInformation("Registration form reset");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting registration form");
+            throw;
+        }
+    }
+
+    public async Task SaveRegistrationFormAsync()
+    {
+        try
+        {
+            if (CurrentRegistrationForm != null)
+            {
+                await SaveToLocalStorageAsync();
+                _logger.LogDebug("Registration form saved to local storage");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving registration form");
+            throw;
+        }
+    }
+
+    public async Task<bool> HasUnsavedChangesAsync()
+    {
+        try
+        {
+            var savedForm = await _localStorage.GetItemAsync<Registration>(RegistrationFormKey);
+            
+            if (CurrentRegistrationForm == null && savedForm == null)
+                return false;
+            
+            if (CurrentRegistrationForm == null || savedForm == null)
+                return true;
+
+            return !AreRegistrationsEqual(CurrentRegistrationForm, savedForm);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking for unsaved changes");
+            return false;
+        }
+    }
+
+    private async Task SaveToLocalStorageAsync()
+    {
+        if (CurrentRegistrationForm != null)
+        {
+            await _localStorage.SetItemAsync(RegistrationFormKey, CurrentRegistrationForm);
+        }
+    }
+
+    private bool AreRegistrationsEqual(Registration reg1, Registration reg2)
+    {
+        return reg1.Id == reg2.Id &&
+               reg1.EventId == reg2.EventId &&
+               reg1.UserName == reg2.UserName &&
+               reg1.Telephone == reg2.Telephone &&
+               reg1.EmailAddress == reg2.EmailAddress &&
+               reg1.Notes == reg2.Notes &&
+               reg1.AttendedEvent == reg2.AttendedEvent;
+    }
+
+    private void InitializeAutoSave()
+    {
+        _autoSaveTimer = new Timer(OnAutoSaveTimerElapsed, null, AutoSaveIntervalMs, AutoSaveIntervalMs);
+    }
+
+    private async void OnAutoSaveTimerElapsed(object? sender, EventArgs e)
+    {
+        try
+        {
+            await SaveRegistrationFormAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during auto-save");
+        }
+    }
+
+    public void Dispose()
+    {
+        _autoSaveTimer?.Dispose();
+        _autoSaveTimer = null;
+    }
+}
+````
+
+### 4. Update Models to Fix Nullable Warnings
+
+````csharp
+namespace BlazorFinalProject.Models;
+
+public class Registration
+{
+    public Guid Id { get; set; }
+    public Guid EventId { get; set; }
+    public string UserName { get; set; } = string.Empty;
+    public string Telephone { get; set; } = string.Empty;
+    public string EmailAddress { get; set; } = string.Empty;
+    public string Notes { get; set; } = string.Empty;
+    public bool AttendedEvent { get; set; }
+}
+````
+
+````csharp
+namespace BlazorFinalProject.Models;
+
+public class Event
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public DateTime Date { get; set; }
+    public string Location { get; set; } = string.Empty;
+    public string Notes { get; set; } = string.Empty;
+}
+````
+
+### 5. Update RegistrationForm Component (if needed)
+
+Make sure your `RegistrationForm` component properly binds to `RegistrationState`:
+
+````csharp
+@inject IHybridRegistrationStateService RegistrationState
+
+@code {
+    [Parameter] public Registration? Registration { get; set; }
+    [Parameter] public EventCallback<Registration> OnValidSubmitCallback { get; set; }
+    [Parameter] public EventCallback OnCancelCallback { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Ensure we're working with the state service registration
+        if (RegistrationState.CurrentRegistrationForm != null && Registration == null)
+        {
+            Registration = RegistrationState.CurrentRegistrationForm;
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        try
+        {
+            if (Registration != null && RegistrationState.CurrentRegistrationForm != null)
+            {
+                // Copy form data to state
+                RegistrationState.CurrentRegistrationForm.UserName = Registration.UserName;
+                RegistrationState.CurrentRegistrationForm.Telephone = Registration.Telephone;
+                RegistrationState.CurrentRegistrationForm.EmailAddress = Registration.EmailAddress;
+                RegistrationState.CurrentRegistrationForm.Notes = Registration.Notes;
+                RegistrationState.CurrentRegistrationForm.AttendedEvent = Registration.AttendedEvent;
+
+                await OnValidSubmitCallback.InvokeAsync(RegistrationState.CurrentRegistrationForm);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in form submit: {ex.Message}");
+        }
+    }
+
+    private async Task HandleCancelAsync()
+    {
+        await OnCancelCallback.InvokeAsync();
+    }
+}
+````
+
+### 6. Verify Service Registration in Program.cs
+
+Ensure all services are properly registered:
+
+````csharp
+namespace BlazorFinalProject
+{
+    public class Program
+    {
+        public static async Task Main(string[] args)
+        {
+            var builder = WebAssemblyHostBuilder.CreateDefault(args);
+            builder.RootComponents.Add<App>("#app");
+            builder.RootComponents.Add<HeadOutlet>("head::after");
+
+            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+            builder.Services.AddBlazoredLocalStorage();
+
+            // Register services
+            builder.Services.AddScoped<IEventService, LocalStorageEventService>();
+            builder.Services.AddScoped<IRegistrationService, RegistrationService>();
+            builder.Services.AddScoped<IMockDataService, MockDataService>();
+            builder.Services.AddScoped<IHybridEventStateService, HybridEventStateService>();
+            builder.Services.AddScoped<IHybridRegistrationStateService, HybridRegistrationStateService>();
+
+            await builder.Build().RunAsync();
+        }
+    }
+}
+````
+
+## Summary of Changes:
+
+1. **EventDetailsPage.razor**: Fixed `SubmitRegistrationAsync` to properly use `RegistrationState.CurrentRegistrationForm`
+2. **IHybridRegistrationStateService**: Added proper interface definition
+3. **HybridRegistrationStateService**: Complete implementation with auto-save and state management
+4. **Models**: Fixed nullable warnings by initializing string properties
+5. **RegistrationForm**: Updated to work properly with state service
+6. **Program.cs**: Verified service registration
+
+These changes will ensure that your `RegistrationState` service works properly throughout the application and resolves the "Event ID cannot be empty" error.
+
+Similar code found with 2 license types
+
+dotnetmurf: Although I receied the consolle error messages, the new registration record was saved to the event. Does this indicate anything to consider in the proposed changes?
+
+GitHub Copilot: Yes, this is very telling! The fact that the registration was successfully saved despite the error indicates there's a **race condition** or **duplicate execution** happening. Let me analyze what's occurring:
+
+## What's Happening:
+
+1. **First Execution**: Works correctly - saves the registration with the proper EventId
+2. **Second Execution**: Fails because it's trying to use a different/reset registration object
+
+Looking at your current code, I can see the issue:
+
+````csharp
+private async Task SubmitRegistrationAsync(Registration reg)
+{
+    await RegistrationService.AddAsync(RegistrationState.CurrentRegistrationForm); // Uses state
+    // But the error shows it's trying to use 'reg' parameter somewhere
+}
+````
+
+## Root Cause Analysis:
+
+The problem is that your `RegistrationForm` component is calling `SubmitRegistrationAsync` **twice**:
+1. Once from the form's own submit handler
+2. Once from the parent component's event callback
+
+## Immediate Fix - Add Guard Clause:
+
+````csharp
+@code {
+    // Add this field to prevent double submission
+    private bool isSubmitting = false;
+
+    private async Task SubmitRegistrationAsync(Registration reg)
+    {
+        // Guard against double submission
+        if (isSubmitting) return;
+        
+        try
+        {
+            isSubmitting = true;
+
+            // Ensure the EventId is set on the state object
+            if (RegistrationState.CurrentRegistrationForm != null)
+            {
+                RegistrationState.CurrentRegistrationForm.EventId = EventId;
+                await RegistrationService.AddAsync(RegistrationState.CurrentRegistrationForm);
+            }
+            else
+            {
+                // This should not happen, but fallback just in case
+                reg.EventId = EventId;
+                await RegistrationService.AddAsync(reg);
+            }
+
+            // Reset to first page and reload
+            currentRegistrationPage = 1;
+            await LoadRegistrationsAsync();
+            showForm = false;
+            
+            // Clear the registration state
+            await RegistrationState.ResetRegistrationFormAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error submitting registration: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}
+````
+
+## Better Solution - Fix the RegistrationForm Component:
+
+The real issue is likely in your `RegistrationForm` component. Update it to prevent double submission:
+
+````csharp
+@code {
+    [Parameter] public Registration? Registration { get; set; }
+    [Parameter] public EventCallback<Registration> OnValidSubmitCallback { get; set; }
+    [Parameter] public EventCallback OnCancelCallback { get; set; }
+
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Make sure we're working with the state registration
+        if (RegistrationState.CurrentRegistrationForm != null)
+        {
+            Registration = RegistrationState.CurrentRegistrationForm;
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        if (isSubmitting) return; // Prevent double submission
+
+        try
+        {
+            isSubmitting = true;
+
+            // Update the state object with current form values
+            if (Registration != null && RegistrationState.CurrentRegistrationForm != null)
+            {
+                RegistrationState.CurrentRegistrationForm.UserName = Registration.UserName;
+                RegistrationState.CurrentRegistrationForm.Telephone = Registration.Telephone;
+                RegistrationState.CurrentRegistrationForm.EmailAddress = Registration.EmailAddress;
+                RegistrationState.CurrentRegistrationForm.Notes = Registration.Notes;
+                RegistrationState.CurrentRegistrationForm.AttendedEvent = Registration.AttendedEvent;
+            }
+
+            // Call parent callback only once
+            await OnValidSubmitCallback.InvokeAsync(Registration);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task HandleCancelAsync()
+    {
+        await OnCancelCallback.InvokeAsync();
+    }
+}
+````
+
+## Alternative Approach - Simplify by Using Only the Parameter:
+
+If the complexity is too much, you could simplify by using only the `reg` parameter:
+
+````csharp
+@code {
+    private bool isSubmitting = false;
+
+    private async Task SubmitRegistrationAsync(Registration reg)
+    {
+        if (isSubmitting) return;
+        
+        try
+        {
+            isSubmitting = true;
+
+            // Ensure EventId is set
+            reg.EventId = EventId;
+            
+            // Use the passed registration directly
+            await RegistrationService.AddAsync(reg);
+
+            // Reset and reload
+            currentRegistrationPage = 1;
+            await LoadRegistrationsAsync();
+            showForm = false;
+            
+            await RegistrationState.ResetRegistrationFormAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error submitting registration: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}
+````
+
+## Key Takeaways:
+
+1. **The double execution is the real problem** - one succeeds, one fails
+2. **Guard clauses prevent duplicate operations**
+3. **The state service might be adding unnecessary complexity** for this simple use case
+4. **Consider whether you really need the RegistrationState service** for new registrations vs. just using it for editing existing ones
+
+The fact that it's working suggests your core logic is correct, but you have a timing/execution issue that needs to be resolved with proper guards.
+
+dotnetmurf: If I want to implement 'Better Solution - Fix the RegistrationForm Component', what would now be my roadmap to follow, including all of the updated code files?
+
+GitHub Copilot: Based on your current EventDetailsPage.razor, here's the complete roadmap to implement the "Better Solution - Fix the RegistrationForm Component":
+
+## Roadmap for RegistrationForm Component Fix
+
+### 1. Update EventDetailsPage.razor - Add Guard Clause and Fix Logic
+
+````csharp
+@code {
+    [Parameter]
+    public Guid EventId { get; set; }
+    private Event? eventDetails;
+    private List<Registration> registrations = new();
+    private bool showForm = false;
+    private Registration? newRegistration;
+
+    // Add guard field for double submission
+    private bool isSubmitting = false;
+
+    // Registration counts
+    private int registrationCount { get; set; }
+    private int attendeeCount { get; set; }
+
+    // Pagination properties for registrations
+    private int currentRegistrationPage = 1;
+    private int registrationPageSize = 4;
+    private int totalRegistrations = 0;
+    private bool isLoadingRegistrations = false;
+    private bool hasMoreRegistrations => registrations.Count < totalRegistrations;
+    private ModalDialog? helpDialog;
+
+    protected override async Task OnInitializedAsync()
+    {
+        eventDetails = await EventService.GetByIdAsync(EventId);
+        await LoadRegistrationsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("scrollToTopComplete");
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("scrollToTopComplete");
+    }
+    
+    private async Task LoadRegistrationsAsync(bool loadMore = false)
+    {
+        isLoadingRegistrations = true;
+        StateHasChanged();
+
+        try
+        {
+            var pagedResult = await RegistrationService.GetPagedForEventAsync(EventId, currentRegistrationPage, registrationPageSize);
+
+            if (loadMore)
+            {
+                registrations.AddRange(pagedResult.Items);
+            }
+            else
+            {
+                registrations = pagedResult.Items;
+            }
+
+            totalRegistrations = pagedResult.TotalCount;
+            registrationCount = totalRegistrations;
+            EventState.RegistrationCounts[EventId] = registrationCount;
+
+            var allRegistrations = await RegistrationService.GetAllForEventAsync(EventId);
+            attendeeCount = allRegistrations.Count(r => r.AttendedEvent == true);
+            EventState.AttendeeCounts[EventId] = attendeeCount;
+        }
+        finally
+        {
+            isLoadingRegistrations = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMoreRegistrationsAsync()
+    {
+        if (hasMoreRegistrations && !isLoadingRegistrations)
+        {
+            currentRegistrationPage++;
+            await LoadRegistrationsAsync(loadMore: true);
+        }
+    }
+
+    private async Task ShowRegistrationForm()
+    {
+        // Initialize the state service for a new registration
+        await RegistrationState.InitializeForNewRegistrationAsync(EventId);
+        
+        // Create local copy for form binding - this will be synced with state
+        newRegistration = new Registration 
+        { 
+            EventId = EventId,
+            UserName = string.Empty,
+            Telephone = string.Empty,
+            EmailAddress = string.Empty,
+            Notes = string.Empty,
+            AttendedEvent = false
+        };
+        
+        showForm = true;
+    }
+
+    private async Task SubmitRegistrationAsync(Registration reg)
+    {
+        // Guard against double submission
+        if (isSubmitting) 
+        {
+            Console.WriteLine("Submission already in progress, ignoring duplicate call");
+            return;
+        }
+
+        try
+        {
+            isSubmitting = true;
+            Console.WriteLine($"Starting registration submission for: {reg?.UserName}");
+
+            // Ensure EventId is set correctly
+            if (RegistrationState.CurrentRegistrationForm != null)
+            {
+                RegistrationState.CurrentRegistrationForm.EventId = EventId;
+                
+                Console.WriteLine($"Submitting registration via state service: {RegistrationState.CurrentRegistrationForm.UserName} (EventId: {RegistrationState.CurrentRegistrationForm.EventId})");
+                
+                await RegistrationService.AddAsync(RegistrationState.CurrentRegistrationForm);
+            }
+            else
+            {
+                // Fallback - should not happen if state service is working
+                Console.WriteLine("State service registration is null, using fallback");
+                reg.EventId = EventId;
+                await RegistrationService.AddAsync(reg);
+            }
+
+            Console.WriteLine("Registration submitted successfully, refreshing data");
+
+            // Reset to first page and reload
+            currentRegistrationPage = 1;
+            await LoadRegistrationsAsync();
+            showForm = false;
+            
+            // Clear the registration state
+            await RegistrationState.ResetRegistrationFormAsync();
+            
+            Console.WriteLine("Registration process completed successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error submitting registration: {ex.Message}");
+            // TODO: Show user-friendly error message
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task CancelRegistrationAsync()
+    {
+        await RegistrationState.ResetRegistrationFormAsync();
+        showForm = false;
+    }
+
+    private async Task RefreshRegistrations()
+    {
+        currentRegistrationPage = 1;
+        await LoadRegistrationsAsync();
+    }
+
+    private void ShowHelp()
+    {
+        helpDialog?.Show();
+    }
+
+    private void CloseHelp()
+    {
+        helpDialog?.Hide();
+    }
+}
+````
+
+### 2. Update RegistrationForm.razor Component
+
+````csharp
+@inject IHybridRegistrationStateService RegistrationState
+@inject ILogger<RegistrationForm> Logger
+
+<!-- Your existing form HTML here -->
+<EditForm Model="Registration" OnValidSubmit="HandleSubmitAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger" />
+    
+    <!-- Form fields -->
+    <div class="mb-3">
+        <label for="userName" class="form-label">Name</label>
+        <InputText id="userName" class="form-control" @bind-Value="Registration!.UserName" />
+        <ValidationMessage For="() => Registration!.UserName" />
+    </div>
+
+    <div class="mb-3">
+        <label for="telephone" class="form-label">Phone</label>
+        <InputText id="telephone" class="form-control" @bind-Value="Registration!.Telephone" />
+        <ValidationMessage For="() => Registration!.Telephone" />
+    </div>
+
+    <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <InputText id="email" class="form-control" @bind-Value="Registration!.EmailAddress" />
+        <ValidationMessage For="() => Registration!.EmailAddress" />
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <InputTextArea id="notes" class="form-control" @bind-Value="Registration!.Notes" />
+        <ValidationMessage For="() => Registration!.Notes" />
+    </div>
+
+    <div class="mb-3 form-check">
+        <InputCheckbox id="attended" class="form-check-input" @bind-Value="Registration!.AttendedEvent" />
+        <label for="attended" class="form-check-label">Attended Event</label>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+            @if (isSubmitting)
+            {
+                <span class="spinner-border spinner-border-sm me-2"></span>
+            }
+            @(IsEditMode ? "Update" : "Register")
+        </button>
+        <button type="button" class="btn btn-secondary" @onclick="HandleCancelAsync" disabled="@isSubmitting">
+            Cancel
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public Registration? Registration { get; set; }
+    [Parameter] public EventCallback<Registration> OnValidSubmitCallback { get; set; }
+    [Parameter] public EventCallback OnCancelCallback { get; set; }
+
+    private bool isSubmitting = false;
+    private bool IsEditMode => Registration?.Id != Guid.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("RegistrationForm initialized - CurrentRegistrationForm: ({UserName}) (ID: {Id})", 
+            RegistrationState.CurrentRegistrationForm?.UserName ?? "(null)", 
+            RegistrationState.CurrentRegistrationForm?.Id ?? Guid.Empty);
+
+        // If we have a state registration but no parameter registration, use the state
+        if (RegistrationState.CurrentRegistrationForm != null && Registration == null)
+        {
+            Registration = RegistrationState.CurrentRegistrationForm;
+            Logger.LogInformation("Using state registration for form binding");
+        }
+        // If we have both, sync the state with the parameter
+        else if (Registration != null && RegistrationState.CurrentRegistrationForm != null)
+        {
+            // Copy parameter values to state to ensure they're in sync
+            SyncParameterToState();
+            Logger.LogInformation("Synced parameter registration to state");
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Keep state and parameter in sync when parameters change
+        if (Registration != null && RegistrationState.CurrentRegistrationForm != null)
+        {
+            SyncParameterToState();
+        }
+    }
+
+    private void SyncParameterToState()
+    {
+        if (Registration != null && RegistrationState.CurrentRegistrationForm != null)
+        {
+            RegistrationState.CurrentRegistrationForm.UserName = Registration.UserName;
+            RegistrationState.CurrentRegistrationForm.Telephone = Registration.Telephone;
+            RegistrationState.CurrentRegistrationForm.EmailAddress = Registration.EmailAddress;
+            RegistrationState.CurrentRegistrationForm.Notes = Registration.Notes;
+            RegistrationState.CurrentRegistrationForm.AttendedEvent = Registration.AttendedEvent;
+            RegistrationState.CurrentRegistrationForm.EventId = Registration.EventId;
+        }
+    }
+
+    private void SyncStateToParameter()
+    {
+        if (Registration != null && RegistrationState.CurrentRegistrationForm != null)
+        {
+            Registration.UserName = RegistrationState.CurrentRegistrationForm.UserName;
+            Registration.Telephone = RegistrationState.CurrentRegistrationForm.Telephone;
+            Registration.EmailAddress = RegistrationState.CurrentRegistrationForm.EmailAddress;
+            Registration.Notes = RegistrationState.CurrentRegistrationForm.Notes;
+            Registration.AttendedEvent = RegistrationState.CurrentRegistrationForm.AttendedEvent;
+            Registration.EventId = RegistrationState.CurrentRegistrationForm.EventId;
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        // Prevent double submission
+        if (isSubmitting) 
+        {
+            Logger.LogWarning("Form submit called while already submitting, ignoring");
+            return;
+        }
+
+        try
+        {
+            isSubmitting = true;
+
+            Logger.LogInformation("Saving registration: {UserName} (ID: {Id})", 
+                Registration?.UserName, Registration?.Id);
+
+            // Sync current form values to state before submission
+            if (Registration != null && RegistrationState.CurrentRegistrationForm != null)
+            {
+                SyncParameterToState();
+
+                // For new registrations, ensure ID is empty so service will generate one
+                if (!IsEditMode)
+                {
+                    RegistrationState.CurrentRegistrationForm.Id = Guid.Empty;
+                    Logger.LogInformation("Adding new registration with generated ID: {Id}", 
+                        RegistrationState.CurrentRegistrationForm.Id);
+                }
+
+                // Call the parent callback - parent will handle the actual service call
+                await OnValidSubmitCallback.InvokeAsync(RegistrationState.CurrentRegistrationForm);
+                
+                Logger.LogInformation("Registration form submitted successfully");
+            }
+            else
+            {
+                Logger.LogError("Cannot submit - Registration or State is null");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving registration with ID: {Id}", Registration?.Id);
+            throw;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task HandleCancelAsync()
+    {
+        try
+        {
+            Logger.LogInformation("Registration form cancelled");
+            await OnCancelCallback.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during form cancellation");
+        }
+    }
+}
+````
+
+### 3. Update HybridRegistrationStateService.cs
+
+````csharp
+using System.Timers;
+using Blazored.LocalStorage;
+using BlazorFinalProject.Models;
+
+namespace BlazorFinalProject.Services;
+
+public class HybridRegistrationStateService : IHybridRegistrationStateService, IDisposable
+{
+    private readonly ILocalStorageService _localStorage;
+    private readonly ILogger<HybridRegistrationStateService> _logger;
+    private System.Timers.Timer? _autoSaveTimer;
+    private const string RegistrationFormKey = "currentRegistrationForm";
+    private const int AutoSaveIntervalMs = 30000; // 30 seconds
+
+    public Registration? CurrentRegistrationForm { get; set; }
+    public bool IsEditing => CurrentRegistrationForm?.Id != Guid.Empty;
+
+    public HybridRegistrationStateService(ILocalStorageService localStorage, ILogger<HybridRegistrationStateService> logger)
+    {
+        _localStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        InitializeAutoSave();
+    }
+
+    public async Task InitializeForNewRegistrationAsync(Guid eventId)
+    {
+        try
+        {
+            if (eventId == Guid.Empty)
+                throw new ArgumentException("Event ID cannot be empty", nameof(eventId));
+
+            CurrentRegistrationForm = new Registration
+            {
+                Id = Guid.Empty, // Will be set when saving
+                EventId = eventId,
+                UserName = string.Empty,
+                Telephone = string.Empty,
+                EmailAddress = string.Empty,
+                Notes = string.Empty,
+                AttendedEvent = false
+            };
+
+            await SaveToLocalStorageAsync();
+            _logger.LogInformation("Initialized new registration form for event {EventId}", eventId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing new registration form for event {EventId}", eventId);
+            throw;
+        }
+    }
+
+    public async Task InitializeForEditRegistrationAsync(Registration registration)
+    {
+        try
+        {
+            if (registration == null)
+                throw new ArgumentNullException(nameof(registration));
+
+            // Create a copy to avoid modifying the original
+            CurrentRegistrationForm = new Registration
+            {
+                Id = registration.Id,
+                EventId = registration.EventId,
+                UserName = registration.UserName,
+                Telephone = registration.Telephone,
+                EmailAddress = registration.EmailAddress,
+                Notes = registration.Notes,
+                AttendedEvent = registration.AttendedEvent
+            };
+
+            await SaveToLocalStorageAsync();
+            _logger.LogInformation("Initialized edit registration form for registration {RegistrationId}", registration.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing edit registration form for registration {RegistrationId}", registration?.Id);
+            throw;
+        }
+    }
+
+    public async Task ResetRegistrationFormAsync()
+    {
+        try
+        {
+            CurrentRegistrationForm = null;
+            await _localStorage.RemoveItemAsync(RegistrationFormKey);
+            _logger.LogInformation("Registration form reset");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting registration form");
+            throw;
+        }
+    }
+
+    public async Task SaveRegistrationFormAsync()
+    {
+        try
+        {
+            if (CurrentRegistrationForm != null)
+            {
+                await SaveToLocalStorageAsync();
+                _logger.LogDebug("Registration form saved to local storage");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving registration form");
+            throw;
+        }
+    }
+
+    public async Task<bool> HasUnsavedChangesAsync()
+    {
+        try
+        {
+            var savedForm = await _localStorage.GetItemAsync<Registration>(RegistrationFormKey);
+            
+            if (CurrentRegistrationForm == null && savedForm == null)
+                return false;
+            
+            if (CurrentRegistrationForm == null || savedForm == null)
+                return true;
+
+            return !AreRegistrationsEqual(CurrentRegistrationForm, savedForm);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking for unsaved changes");
+            return false;
+        }
+    }
+
+    private async Task SaveToLocalStorageAsync()
+    {
+        if (CurrentRegistrationForm != null)
+        {
+            await _localStorage.SetItemAsync(RegistrationFormKey, CurrentRegistrationForm);
+        }
+    }
+
+    private bool AreRegistrationsEqual(Registration reg1, Registration reg2)
+    {
+        return reg1.Id == reg2.Id &&
+               reg1.EventId == reg2.EventId &&
+               reg1.UserName == reg2.UserName &&
+               reg1.Telephone == reg2.Telephone &&
+               reg1.EmailAddress == reg2.EmailAddress &&
+               reg1.Notes == reg2.Notes &&
+               reg1.AttendedEvent == reg2.AttendedEvent;
+    }
+
+    private void InitializeAutoSave()
+    {
+        _autoSaveTimer = new System.Timers.Timer(AutoSaveIntervalMs);
+        _autoSaveTimer.Elapsed += OnAutoSaveTimerElapsed;
+        _autoSaveTimer.Start();
+    }
+
+    private async void OnAutoSaveTimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        try
+        {
+            await SaveRegistrationFormAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during auto-save");
+        }
+    }
+
+    public void Dispose()
+    {
+        _autoSaveTimer?.Stop();
+        _autoSaveTimer?.Dispose();
+        _autoSaveTimer = null;
+    }
+}
+````
+
+### 4. Update IHybridRegistrationStateService.cs
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public interface IHybridRegistrationStateService
+{
+    Registration? CurrentRegistrationForm { get; set; }
+    bool IsEditing { get; }
+    
+    Task InitializeForNewRegistrationAsync(Guid eventId);
+    Task InitializeForEditRegistrationAsync(Registration registration);
+    Task ResetRegistrationFormAsync();
+    Task SaveRegistrationFormAsync();
+    Task<bool> HasUnsavedChangesAsync();
+}
+````
+
+### 5. Update IRegistrationService.cs (Add Missing Method)
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public interface IRegistrationService
+{
+    // Existing methods
+    Task<List<Registration>> GetAllAsync();
+    Task<List<Registration>> GetAllForEventAsync(Guid eventId);
+    Task<Registration> GetByIdAsync(Guid id);
+    Task<Registration> AddAsync(Registration registration);
+    Task<Registration> UpdateAsync(Registration registration);
+    Task DeleteAsync(Guid id);
+    
+    // Add this method that your EventDetailsPage is calling
+    Task<PagedResult<Registration>> GetPagedForEventAsync(Guid eventId, int pageNumber, int pageSize, CancellationToken cancellationToken = default);
+
+    // Optional: Other utility methods
+    Task<Registration?> TryGetByIdAsync(Guid id);
+    Task<bool> ExistsAsync(Guid id);
+    Task<int> GetRegistrationCountForEventAsync(Guid eventId);
+    Task<List<Registration>> GetAttendedRegistrationsForEventAsync(Guid eventId);
+    Task<bool> IsUserRegisteredForEventAsync(Guid eventId, string emailAddress);
+    Task<PagedResult<Registration>> GetPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default);
+}
+````
+
+## Summary of Key Changes:
+
+1. **EventDetailsPage**: Added `isSubmitting` guard and detailed logging to track execution flow
+2. **RegistrationForm**: Added proper state synchronization and double-submission prevention
+3. **HybridRegistrationStateService**: Complete implementation with auto-save and proper state management
+4. **Interface Updates**: Ensured all required methods are defined
+
+## Key Benefits:
+
+- **Prevents Double Submission**: Guard clauses in both components
+- **State Synchronization**: Form and state service stay in sync
+- **Detailed Logging**: Track execution flow to debug issues
+- **Error Handling**: Proper try-catch blocks with logging
+- **Clean Separation**: Form handles UI, page handles business logic, state service handles persistence
+
+This implementation should eliminate the duplicate submission error while maintaining the benefits of the state service for auto-save and form persistence.
+
+dotnetmurf: When executing the EditRegistrationAsync method in this card, the browser console shows this error: info: BlazorFinalProject.Components.Registrations.RegistrationCard[0]
+      Starting edit for registration b14225cb-9606-4e96-9536-fa0ba51bd6cf dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Services.HybridRegistrationStateService[0]
+      Initialized edit registration form for registration b14225cb-9606-4e96-9536-fa0ba51bd6cf dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Components.Registrations.RegistrationCard[0]
+      Edit form opened for registration b14225cb-9606-4e96-9536-fa0ba51bd6cf dotnet.runtime.d1pzlaz2ez.js:3:171638
+crit: Microsoft.AspNetCore.Components.WebAssembly.Rendering.WebAssemblyRenderer[100]
+      Unhandled exception rendering component: Object of type 'BlazorFinalProject.Components.Registrations.RegistrationForm' does not have a property matching the name 'FormTitle'.
+System.InvalidOperationException: Object of type 'BlazorFinalProject.Components.Registrations.RegistrationForm' does not have a property matching the name 'FormTitle'.
+   at Microsoft.AspNetCore.Components.Reflection.ComponentProperties.ThrowForUnknownIncomingParameterName(Type targetType, String parameterName)
+   at Microsoft.AspNetCore.Components.Reflection.ComponentProperties.SetProperties(ParameterView& parameters, Object target)
+   at Microsoft.AspNetCore.Components.ParameterView.SetParameterProperties(Object target)
+   at Microsoft.AspNetCore.Components.ComponentBase.SetParametersAsync(ParameterView parameters)
+   at Microsoft.AspNetCore.Components.Rendering.ComponentState.SupplyCombinedParameters(ParameterView directAndCascadingParameters) blazor.webassembly.js:1:45175
+
+
+GitHub Copilot: The error indicates that your `RegistrationForm` component doesn't have a `FormTitle` parameter, but your `RegistrationCard` is trying to pass one. Here's the fix:
+
+## Update RegistrationForm.razor - Add Missing FormTitle Parameter
+
+````csharp
+@inject IHybridRegistrationStateService RegistrationState
+@inject ILogger<RegistrationForm> Logger
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">@FormTitle</h5>
+    </div>
+    <div class="card-body">
+        <EditForm Model="Registration" OnValidSubmit="HandleSubmitAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+            
+            <!-- Form fields -->
+            <div class="mb-3">
+                <label for="userName" class="form-label">Name</label>
+                <InputText id="userName" class="form-control" @bind-Value="Registration!.UserName" />
+                <ValidationMessage For="() => Registration!.UserName" />
+            </div>
+
+            <div class="mb-3">
+                <label for="telephone" class="form-label">Phone</label>
+                <InputText id="telephone" class="form-control" @bind-Value="Registration!.Telephone" />
+                <ValidationMessage For="() => Registration!.Telephone" />
+            </div>
+
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <InputText id="email" class="form-control" @bind-Value="Registration!.EmailAddress" />
+                <ValidationMessage For="() => Registration!.EmailAddress" />
+            </div>
+
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <InputTextArea id="notes" class="form-control" @bind-Value="Registration!.Notes" />
+                <ValidationMessage For="() => Registration!.Notes" />
+            </div>
+
+            <div class="mb-3 form-check">
+                <InputCheckbox id="attended" class="form-check-input" @bind-Value="Registration!.AttendedEvent" />
+                <label for="attended" class="form-check-label">Attended Event</label>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                    @if (isSubmitting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    @(IsEditMode ? "Update Registration" : "Create Registration")
+                </button>
+                <button type="button" class="btn btn-secondary" @onclick="HandleCancelAsync" disabled="@isSubmitting">
+                    Cancel
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Registration? Registration { get; set; }
+    [Parameter] public EventCallback<Registration> OnValidSubmitCallback { get; set; }
+    [Parameter] public EventCallback OnCancelCallback { get; set; }
+    
+    // Add the missing FormTitle parameter
+    [Parameter] public string FormTitle { get; set; } = "Registration Form";
+
+    private bool isSubmitting = false;
+    private bool IsEditMode => Registration?.Id != Guid.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("RegistrationForm initialized - CurrentRegistrationForm: ({UserName}) (ID: {Id})", 
+            RegistrationState.CurrentRegistrationForm?.UserName ?? "(null)", 
+            RegistrationState.CurrentRegistrationForm?.Id ?? Guid.Empty);
+
+        // If we have a state registration but no parameter registration, use the state
+        if (RegistrationState.CurrentRegistrationForm != null && Registration == null)
+        {
+            Registration = RegistrationState.CurrentRegistrationForm;
+            Logger.LogInformation("Using state registration for form binding");
+        }
+        // If we have both, sync the state with the parameter
+        else if (Registration != null && RegistrationState.CurrentRegistrationForm != null)
+        {
+            // Copy parameter values to state to ensure they're in sync
+            SyncParameterToState();
+            Logger.LogInformation("Synced parameter registration to state");
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Keep state and parameter in sync when parameters change
+        if (Registration != null && RegistrationState.CurrentRegistrationForm != null)
+        {
+            SyncParameterToState();
+        }
+    }
+
+    private void SyncParameterToState()
+    {
+        if (Registration != null && RegistrationState.CurrentRegistrationForm != null)
+        {
+            RegistrationState.CurrentRegistrationForm.UserName = Registration.UserName;
+            RegistrationState.CurrentRegistrationForm.Telephone = Registration.Telephone;
+            RegistrationState.CurrentRegistrationForm.EmailAddress = Registration.EmailAddress;
+            RegistrationState.CurrentRegistrationForm.Notes = Registration.Notes;
+            RegistrationState.CurrentRegistrationForm.AttendedEvent = Registration.AttendedEvent;
+            RegistrationState.CurrentRegistrationForm.EventId = Registration.EventId;
+        }
+    }
+
+    private void SyncStateToParameter()
+    {
+        if (Registration != null && RegistrationState.CurrentRegistrationForm != null)
+        {
+            Registration.UserName = RegistrationState.CurrentRegistrationForm.UserName;
+            Registration.Telephone = RegistrationState.CurrentRegistrationForm.Telephone;
+            Registration.EmailAddress = RegistrationState.CurrentRegistrationForm.EmailAddress;
+            Registration.Notes = RegistrationState.CurrentRegistrationForm.Notes;
+            Registration.AttendedEvent = RegistrationState.CurrentRegistrationForm.AttendedEvent;
+            Registration.EventId = RegistrationState.CurrentRegistrationForm.EventId;
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        // Prevent double submission
+        if (isSubmitting) 
+        {
+            Logger.LogWarning("Form submit called while already submitting, ignoring");
+            return;
+        }
+
+        try
+        {
+            isSubmitting = true;
+
+            Logger.LogInformation("Saving registration: {UserName} (ID: {Id})", 
+                Registration?.UserName, Registration?.Id);
+
+            // Sync current form values to state before submission
+            if (Registration != null && RegistrationState.CurrentRegistrationForm != null)
+            {
+                SyncParameterToState();
+
+                // For new registrations, ensure ID is empty so service will generate one
+                if (!IsEditMode)
+                {
+                    RegistrationState.CurrentRegistrationForm.Id = Guid.Empty;
+                    Logger.LogInformation("Adding new registration with generated ID: {Id}", 
+                        RegistrationState.CurrentRegistrationForm.Id);
+                }
+
+                // Call the parent callback - parent will handle the actual service call
+                await OnValidSubmitCallback.InvokeAsync(RegistrationState.CurrentRegistrationForm);
+                
+                Logger.LogInformation("Registration form submitted successfully");
+            }
+            else
+            {
+                Logger.LogError("Cannot submit - Registration or State is null");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving registration with ID: {Id}", Registration?.Id);
+            throw;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task HandleCancelAsync()
+    {
+        try
+        {
+            Logger.LogInformation("Registration form cancelled");
+            await OnCancelCallback.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during form cancellation");
+        }
+    }
+}
+````
+
+## Alternative Fix - Remove FormTitle from RegistrationCard
+
+If you don't want to add the FormTitle parameter, you can simply remove it from the RegistrationCard.razor:
+
+````csharp
+@if (showEditForm && selectedRegistration != null)
+{
+    <RegistrationForm Registration="selectedRegistration"
+                     OnValidSubmitCallback="OnEditSubmitAsync"
+                     OnCancelCallback="OnEditCancelAsync" />
+}
+````
+
+## Complete Updated RegistrationCard.razor - Fix OnEditSubmitAsync
+
+Also, I noticed another issue in your `OnEditSubmitAsync` method. You're using both `updatedRegistration` parameter and `RegistrationState.CurrentRegistrationForm`. Here's the corrected version:
+
+````csharp
+private async Task OnEditSubmitAsync(Registration updatedRegistration)
+{
+    try
+    {
+        Logger.LogInformation("Saving updated registration {RegistrationId}", updatedRegistration.Id);
+        
+        // Use the updatedRegistration parameter passed from the form
+        await RegistrationService.UpdateAsync(updatedRegistration);
+        showEditForm = false;
+        selectedRegistration = null;
+        
+        // Reset the state after successful update
+        await RegistrationState.ResetRegistrationFormAsync();
+        
+        await OnRegistrationUpdated.InvokeAsync();
+        Logger.LogInformation("Registration {RegistrationId} updated successfully", updatedRegistration.Id);
+    }
+    catch (Exception ex)
+    {
+        Logger.LogError(ex, "Error saving registration {RegistrationId}", updatedRegistration.Id);
+        // Error handling could be improved by showing user-friendly messages
+        throw; // Re-throw to let the form handle the error
+    }
+}
+````
+
+## Summary of Required Changes:
+
+1. **Add `FormTitle` parameter** to `RegistrationForm.razor` with a default value
+2. **Use the parameter in the form's HTML** to display the title
+3. **Fix the `OnEditSubmitAsync` method** to use the correct registration object
+4. **Add state reset** after successful update
+
+These changes should resolve the "FormTitle" property error and ensure the edit functionality works correctly with your state service.
+
+dotnetmurf: I do not see a method called 'OnEditSubmitAsync' in RegistrationForm.razor. Is this a new addition?
+
+GitHub Copilot: You're absolutely correct! The `OnEditSubmitAsync` method is **not** in the RegistrationForm.razor component. That method would be in the **parent component** that uses the `RegistrationForm` - likely in your `RegistrationCard.razor` or `EventDetailsPage.razor`.
+
+Let me clarify the architecture:
+
+## Component Architecture:
+
+1. **RegistrationForm.razor** - The reusable form component
+   - Has `HandleSubmitAsync()` method (which you have)
+   - Calls `OnValidSubmitCallback` parameter when form is submitted
+
+2. **`RegistrationCard.razor`** - The parent component that shows registration details
+   - Has `OnEditSubmitAsync()` method (this is what needs to be added/fixed)
+   - Passes `OnEditSubmitAsync` as the `OnValidSubmitCallback` parameter to `RegistrationForm`
+
+## Here's what you need to add to `RegistrationCard.razor`:
+
+````csharp
+@code {
+    // ... existing code ...
+
+    private bool showEditForm = false;
+    private Registration? selectedRegistration;
+    private bool isEditingRegistration = false;
+
+    private async Task EditRegistrationAsync()
+    {
+        try
+        {
+            isEditingRegistration = true;
+            Logger.LogInformation("Starting edit for registration {RegistrationId}", Registration.Id);
+
+            // Initialize the state service for editing
+            await RegistrationState.InitializeForEditRegistrationAsync(Registration);
+            
+            // Create a copy for the form
+            selectedRegistration = new Registration
+            {
+                Id = Registration.Id,
+                EventId = Registration.EventId,
+                UserName = Registration.UserName,
+                Telephone = Registration.Telephone,
+                EmailAddress = Registration.EmailAddress,
+                Notes = Registration.Notes,
+                AttendedEvent = Registration.AttendedEvent
+            };
+
+            showEditForm = true;
+            Logger.LogInformation("Edit form opened for registration {RegistrationId}", Registration.Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error starting edit for registration {RegistrationId}", Registration.Id);
+        }
+        finally
+        {
+            isEditingRegistration = false;
+        }
+    }
+
+    // THIS IS THE METHOD THAT WAS MISSING - Add it to RegistrationCard.razor
+    private async Task OnEditSubmitAsync(Registration updatedRegistration)
+    {
+        try
+        {
+            Logger.LogInformation("Saving updated registration {RegistrationId}", updatedRegistration.Id);
+            
+            // Use the updatedRegistration parameter passed from the form
+            await RegistrationService.UpdateAsync(updatedRegistration);
+            
+            // Close the edit form
+            showEditForm = false;
+            selectedRegistration = null;
+            
+            // Reset the state after successful update
+            await RegistrationState.ResetRegistrationFormAsync();
+            
+            // Notify parent component that registration was updated
+            await OnRegistrationUpdated.InvokeAsync();
+            
+            Logger.LogInformation("Registration {RegistrationId} updated successfully", updatedRegistration.Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving registration {RegistrationId}", updatedRegistration.Id);
+            throw; // Re-throw to let the form handle the error
+        }
+    }
+
+    private async Task OnEditCancelAsync()
+    {
+        try
+        {
+            Logger.LogInformation("Edit cancelled for registration {RegistrationId}", selectedRegistration?.Id);
+            
+            showEditForm = false;
+            selectedRegistration = null;
+            
+            // Reset the state
+            await RegistrationState.ResetRegistrationFormAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error cancelling edit");
+        }
+    }
+}
+````
+
+## And in the HTML section of `RegistrationCard.razor`:
+
+````html
+@if (showEditForm && selectedRegistration != null)
+{
+    <RegistrationForm Registration="selectedRegistration"
+                     FormTitle="Edit Registration"
+                     OnValidSubmitCallback="OnEditSubmitAsync"
+                     OnCancelCallback="OnEditCancelAsync" />
+}
+````
+
+## Summary:
+
+- **RegistrationForm.razor** - Contains `HandleSubmitAsync()` ✅ (you have this)
+- **`RegistrationCard.razor`** - Needs `OnEditSubmitAsync()` ❌ (this is missing)
+- **`EventDetailsPage.razor`** - Contains `SubmitRegistrationAsync()` ✅ (you have this for new registrations)
+
+The `OnEditSubmitAsync` method belongs in whichever component is showing the edit form - likely `RegistrationCard.razor`. This method receives the updated registration from the form and calls the service to save the changes.
+
+dotnetmurf: I am sending you Some code. Please compare it to the open file in my workspace: using Microsoft.JSInterop;
+using System.Text.Json;
+using System.Timers;
+
+namespace BlazorFinalProject.Services;
+
+public class HybridEventStateService : IHybridEventStateService, IDisposable
+{
+    private readonly IJSRuntime _jsRuntime;
+    private System.Timers.Timer _autoSaveTimer;
+    private bool _isDirty = false;
+    private readonly object _lockObject = new object();
+
+    // In-memory state for snappy interactions
+    private Event _currentEventForm = new Event();
+    private Guid? _currentEditingEventId = null; // Track which event we're editing
+
+    public Event CurrentEventForm
+    {
+        get
+        {
+            lock (_lockObject)
+            {
+                return _currentEventForm;
+            }
+        }
+        private set
+        {
+            lock (_lockObject)
+            {
+                _currentEventForm = value;
+            }
+        }
+    }
+
+    public bool IsFormDirty
+    {
+        get
+        {
+            lock (_lockObject)
+            {
+                return _isDirty;
+            }
+        }
+    }
+
+    public Dictionary<Guid, int> RegistrationCounts { get; set; } = new();
+    public Dictionary<Guid, int> AttendeeCounts { get; set; } = new();
+
+    // Auto-save configuration
+    private const int AutoSaveIntervalMs = 1000;
+    private const string NewEventDraftKey = "eventForm_newDraft";
+    private const string EditEventDraftPrefix = "eventForm_edit_";
+
+    public HybridEventStateService(IJSRuntime jsRuntime)
+    {
+        _jsRuntime = jsRuntime;
+        InitializeAutoSave();
+    }
+
+    private void InitializeAutoSave()
+    {
+        _autoSaveTimer = new System.Timers.Timer(AutoSaveIntervalMs);
+        _autoSaveTimer.Elapsed += OnAutoSaveTimerElapsed;
+        _autoSaveTimer.AutoReset = true;
+        _autoSaveTimer.Start();
+    }
+
+    // Initialize for creating a new event
+    public async Task InitializeForNewEventAsync()
+    {
+        _currentEditingEventId = null;
+
+        // Try to load existing new event draft
+        try
+        {
+            var savedJson = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", NewEventDraftKey);
+            if (!string.IsNullOrEmpty(savedJson))
+            {
+                var savedForm = JsonSerializer.Deserialize<Event>(savedJson);
+                if (savedForm != null)
+                {
+                    CurrentEventForm = savedForm;
+                    MarkClean();
+                    return;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ERROR loading new event draft: {ex.Message}");
+        }
+
+        // No draft found, start fresh
+        CurrentEventForm = new Event();
+        MarkClean();
+    }
+
+    // Initialize for editing an existing event
+    public async Task InitializeForEditAsync(Event eventToEdit)
+    {
+        _currentEditingEventId = eventToEdit.Id;
+
+        var editDraftKey = $"{EditEventDraftPrefix}{eventToEdit.Id}";
+
+        // Try to load existing edit draft for this specific event
+        try
+        {
+            var savedJson = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", editDraftKey);
+            if (!string.IsNullOrEmpty(savedJson))
+            {
+                var savedForm = JsonSerializer.Deserialize<Event>(savedJson);
+                if (savedForm != null && savedForm.Id == eventToEdit.Id)
+                {
+                    CurrentEventForm = savedForm;
+                    MarkClean();
+                    return;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ERROR loading edit draft: {ex.Message}");
+        }
+
+        // No draft found, load original event data
+        CurrentEventForm = new Event
+        {
+            Id = eventToEdit.Id,
+            Name = eventToEdit.Name,
+            Date = eventToEdit.Date,
+            Location = eventToEdit.Location,
+            Notes = eventToEdit.Notes
+        };
+        MarkClean();
+    }
+
+    public void MarkFormDirty()
+    {
+        MarkDirty();
+    }
+
+    public async Task SaveFormAsync()
+    {
+        await SaveToStorageAsync();
+        MarkClean();
+    }
+
+    public async Task ResetEventFormAsync()
+    {
+
+        // Only clear the draft for the current mode
+        if (_currentEditingEventId.HasValue)
+        {
+            // We're editing - only clear the edit draft
+            var editDraftKey = $"{EditEventDraftPrefix}{_currentEditingEventId.Value}";
+            try
+            {
+                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", editDraftKey);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR removing edit draft: {ex.Message}");
+            }
+        }
+        else
+        {
+            // We're creating new - only clear the new event draft
+            try
+            {
+                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", NewEventDraftKey);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR removing new event draft: {ex.Message}");
+            }
+        }
+
+        // Reset the current form state
+        CurrentEventForm = new Event();
+        _currentEditingEventId = null;
+        MarkClean();
+    }
+    private void MarkDirty()
+    {
+        _isDirty = true;
+    }
+
+    private void MarkClean()
+    {
+        _isDirty = false;
+    }
+
+    private async void OnAutoSaveTimerElapsed(object sender, ElapsedEventArgs e)
+    {
+        if (_isDirty)
+        {
+            await SaveToStorageAsync();
+            MarkClean();
+        }
+    }
+
+    private async Task SaveToStorageAsync()
+    {
+        try
+        {
+            Event formToSave;
+            lock (_lockObject)
+            {
+                formToSave = new Event
+                {
+                    Id = _currentEventForm.Id,
+                    Name = _currentEventForm.Name,
+                    Date = _currentEventForm.Date,
+                    Location = _currentEventForm.Location,
+                    Notes = _currentEventForm.Notes
+                };
+            }
+
+            var json = JsonSerializer.Serialize(formToSave);
+            string storageKey;
+
+            if (_currentEditingEventId.HasValue)
+            {
+                storageKey = $"{EditEventDraftPrefix}{_currentEditingEventId.Value}";
+            }
+            else
+            {
+                storageKey = NewEventDraftKey;
+            }
+
+            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", storageKey, json);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ERROR saving form to storage: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        _autoSaveTimer?.Stop();
+        _autoSaveTimer?.Dispose();
+    }
+}
+
+
+GitHub Copilot: Looking at your `HybridEventStateService` and comparing it to your `HybridRegistrationStateService`, I can see several key differences in implementation approach. Here's an analysis and recommendations:
+
+## Key Differences:
+
+### HybridEventStateService (your workspace file):
+- Uses **IJSRuntime** directly for localStorage
+- Has **thread-safe locking** with `_lockObject`
+- Uses **JSON serialization** manually
+- Has **separate storage keys** for new vs edit scenarios
+- Uses **dirty flag tracking** for performance
+- More **granular control** over storage operations
+
+### HybridRegistrationStateService (attachment):
+- Uses **Blazored.LocalStorage** service
+- **No thread-safe locking**
+- **Automatic JSON handling** by the service
+- Uses **single storage key** for all scenarios
+- **Simpler implementation** but less optimized
+
+## Recommendation: Align Both Services
+
+I recommend updating your `HybridRegistrationStateService` to match the pattern of `HybridEventStateService` for consistency and better performance:
+
+````csharp
+using Microsoft.JSInterop;
+using System.Text.Json;
+using System.Timers;
+using BlazorFinalProject.Models;
+
+namespace BlazorFinalProject.Services;
+
+public class HybridRegistrationStateService : IHybridRegistrationStateService, IDisposable
+{
+    private readonly IJSRuntime _jsRuntime;
+    private readonly ILogger<HybridRegistrationStateService> _logger;
+    private System.Timers.Timer? _autoSaveTimer;
+    private bool _isDirty = false;
+    private readonly object _lockObject = new object();
+
+    // In-memory state for snappy interactions
+    private Registration _currentRegistrationForm = new Registration();
+    private Guid? _currentEditingRegistrationId = null; // Track which registration we're editing
+
+    public Registration? CurrentRegistrationForm
+    {
+        get
+        {
+            lock (_lockObject)
+            {
+                return _currentRegistrationForm;
+            }
+        }
+        private set
+        {
+            lock (_lockObject)
+            {
+                _currentRegistrationForm = value ?? new Registration();
+            }
+        }
+    }
+
+    public bool IsEditing => _currentEditingRegistrationId.HasValue && _currentEditingRegistrationId != Guid.Empty;
+
+    public bool IsFormDirty
+    {
+        get
+        {
+            lock (_lockObject)
+            {
+                return _isDirty;
+            }
+        }
+    }
+
+    // Auto-save configuration
+    private const int AutoSaveIntervalMs = 1000;
+    private const string NewRegistrationDraftKey = "registrationForm_newDraft";
+    private const string EditRegistrationDraftPrefix = "registrationForm_edit_";
+
+    public HybridRegistrationStateService(IJSRuntime jsRuntime, ILogger<HybridRegistrationStateService> logger)
+    {
+        _jsRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        InitializeAutoSave();
+    }
+
+    private void InitializeAutoSave()
+    {
+        _autoSaveTimer = new System.Timers.Timer(AutoSaveIntervalMs);
+        _autoSaveTimer.Elapsed += OnAutoSaveTimerElapsed;
+        _autoSaveTimer.AutoReset = true;
+        _autoSaveTimer.Start();
+    }
+
+    public async Task InitializeForNewRegistrationAsync(Guid eventId)
+    {
+        try
+        {
+            if (eventId == Guid.Empty)
+                throw new ArgumentException("Event ID cannot be empty", nameof(eventId));
+
+            _currentEditingRegistrationId = null;
+
+            // Try to load existing new registration draft
+            try
+            {
+                var savedJson = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", NewRegistrationDraftKey);
+                if (!string.IsNullOrEmpty(savedJson))
+                {
+                    var savedForm = JsonSerializer.Deserialize<Registration>(savedJson);
+                    if (savedForm != null && savedForm.EventId == eventId)
+                    {
+                        CurrentRegistrationForm = savedForm;
+                        MarkClean();
+                        _logger.LogInformation("Loaded existing draft for new registration (Event: {EventId})", eventId);
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error loading new registration draft");
+            }
+
+            // No draft found, start fresh
+            CurrentRegistrationForm = new Registration
+            {
+                Id = Guid.Empty, // Will be set when saving
+                EventId = eventId,
+                UserName = string.Empty,
+                Telephone = string.Empty,
+                EmailAddress = string.Empty,
+                Notes = string.Empty,
+                AttendedEvent = false
+            };
+
+            MarkClean();
+            _logger.LogInformation("Initialized new registration form for event {EventId}", eventId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing new registration form for event {EventId}", eventId);
+            throw;
+        }
+    }
+
+    public async Task InitializeForEditRegistrationAsync(Registration registration)
+    {
+        try
+        {
+            if (registration == null)
+                throw new ArgumentNullException(nameof(registration));
+
+            _currentEditingRegistrationId = registration.Id;
+            var editDraftKey = $"{EditRegistrationDraftPrefix}{registration.Id}";
+
+            // Try to load existing edit draft for this specific registration
+            try
+            {
+                var savedJson = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", editDraftKey);
+                if (!string.IsNullOrEmpty(savedJson))
+                {
+                    var savedForm = JsonSerializer.Deserialize<Registration>(savedJson);
+                    if (savedForm != null && savedForm.Id == registration.Id)
+                    {
+                        CurrentRegistrationForm = savedForm;
+                        MarkClean();
+                        _logger.LogInformation("Loaded existing edit draft for registration {RegistrationId}", registration.Id);
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error loading edit draft for registration {RegistrationId}", registration.Id);
+            }
+
+            // No draft found, load original registration data
+            CurrentRegistrationForm = new Registration
+            {
+                Id = registration.Id,
+                EventId = registration.EventId,
+                UserName = registration.UserName,
+                Telephone = registration.Telephone,
+                EmailAddress = registration.EmailAddress,
+                Notes = registration.Notes,
+                AttendedEvent = registration.AttendedEvent
+            };
+
+            MarkClean();
+            _logger.LogInformation("Initialized edit registration form for registration {RegistrationId}", registration.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing edit registration form for registration {RegistrationId}", registration?.Id);
+            throw;
+        }
+    }
+
+    public void MarkFormDirty()
+    {
+        MarkDirty();
+    }
+
+    public async Task SaveRegistrationFormAsync()
+    {
+        await SaveToStorageAsync();
+        MarkClean();
+    }
+
+    public async Task ResetRegistrationFormAsync()
+    {
+        try
+        {
+            // Only clear the draft for the current mode
+            if (_currentEditingRegistrationId.HasValue)
+            {
+                // We're editing - only clear the edit draft
+                var editDraftKey = $"{EditRegistrationDraftPrefix}{_currentEditingRegistrationId.Value}";
+                try
+                {
+                    await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", editDraftKey);
+                    _logger.LogInformation("Cleared edit draft for registration {RegistrationId}", _currentEditingRegistrationId.Value);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error removing edit draft for registration {RegistrationId}", _currentEditingRegistrationId.Value);
+                }
+            }
+            else
+            {
+                // We're creating new - only clear the new registration draft
+                try
+                {
+                    await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", NewRegistrationDraftKey);
+                    _logger.LogInformation("Cleared new registration draft");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error removing new registration draft");
+                }
+            }
+
+            // Reset the current form state
+            CurrentRegistrationForm = new Registration();
+            _currentEditingRegistrationId = null;
+            MarkClean();
+
+            _logger.LogInformation("Registration form reset");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting registration form");
+            throw;
+        }
+    }
+
+    public async Task<bool> HasUnsavedChangesAsync()
+    {
+        return IsFormDirty;
+    }
+
+    private void MarkDirty()
+    {
+        _isDirty = true;
+    }
+
+    private void MarkClean()
+    {
+        _isDirty = false;
+    }
+
+    private async void OnAutoSaveTimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        if (_isDirty)
+        {
+            await SaveToStorageAsync();
+            MarkClean();
+        }
+    }
+
+    private async Task SaveToStorageAsync()
+    {
+        try
+        {
+            Registration formToSave;
+            lock (_lockObject)
+            {
+                formToSave = new Registration
+                {
+                    Id = _currentRegistrationForm.Id,
+                    EventId = _currentRegistrationForm.EventId,
+                    UserName = _currentRegistrationForm.UserName,
+                    Telephone = _currentRegistrationForm.Telephone,
+                    EmailAddress = _currentRegistrationForm.EmailAddress,
+                    Notes = _currentRegistrationForm.Notes,
+                    AttendedEvent = _currentRegistrationForm.AttendedEvent
+                };
+            }
+
+            var json = JsonSerializer.Serialize(formToSave);
+            string storageKey;
+
+            if (_currentEditingRegistrationId.HasValue)
+            {
+                storageKey = $"{EditRegistrationDraftPrefix}{_currentEditingRegistrationId.Value}";
+            }
+            else
+            {
+                storageKey = NewRegistrationDraftKey;
+            }
+
+            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", storageKey, json);
+            _logger.LogDebug("Registration form saved to storage with key: {StorageKey}", storageKey);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving registration form to storage");
+        }
+    }
+
+    public void Dispose()
+    {
+        _autoSaveTimer?.Stop();
+        _autoSaveTimer?.Dispose();
+        _autoSaveTimer = null;
+    }
+}
+````
+
+## Update the Interface
+
+````csharp
+namespace BlazorFinalProject.Services;
+
+public interface IHybridRegistrationStateService
+{
+    Registration? CurrentRegistrationForm { get; }
+    bool IsEditing { get; }
+    bool IsFormDirty { get; }
+    
+    Task InitializeForNewRegistrationAsync(Guid eventId);
+    Task InitializeForEditRegistrationAsync(Registration registration);
+    void MarkFormDirty();
+    Task SaveRegistrationFormAsync();
+    Task ResetRegistrationFormAsync();
+    Task<bool> HasUnsavedChangesAsync();
+}
+````
+
+## Update Program.cs Dependencies
+
+Since we're switching from Blazored.LocalStorage to IJSRuntime, you may need to remove the Blazored.LocalStorage dependency for this service:
+
+````csharp
+// Remove Blazored.LocalStorage dependency injection for HybridRegistrationStateService
+builder.Services.AddScoped<IHybridRegistrationStateService>(sp => 
+    new HybridRegistrationStateService(
+        sp.GetRequiredService<IJSRuntime>(),
+        sp.GetRequiredService<ILogger<HybridRegistrationStateService>>()
+    ));
+````
+
+## Benefits of This Approach:
+
+1. **Consistency** - Both services follow the same pattern
+2. **Performance** - Thread-safe with dirty flag optimization
+3. **Separation** - Different storage keys for new vs edit scenarios
+4. **Reliability** - Better error handling and logging
+5. **Memory Efficiency** - Only saves when dirty
+
+This will make your registration state service consistent with your event state service and should resolve any issues with the current implementation.
+
+dotnetmurf: When using the RegistrationForm to Create A New Registration, the new record is saved. However,the form remains on display when it should return to showing the parent EventDetailsPage. Console logs: info: BlazorFinalProject.Services.HybridRegistrationStateService[0]
+      Initialized new registration form for event 2b60460b-25b6-4c09-be7d-e62fcd75b074 dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Components.Registrations.RegistrationForm[0]
+      RegistrationForm initialized - CurrentRegistrationForm:  (ID: 00000000-0000-0000-0000-000000000000) dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Services.HybridRegistrationStateService[0]
+      Initialized new registration form for event 2b60460b-25b6-4c09-be7d-e62fcd75b074 dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Components.Registrations.RegistrationForm[0]
+      Checkbox changed - marking form dirty. New value: True dotnet.runtime.d1pzlaz2ez.js:3:171638
+GET
+data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e
+
+info: BlazorFinalProject.Components.Registrations.RegistrationForm[0]
+      Saving registration: a6 (ID: 00000000-0000-0000-0000-000000000000) dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Components.Registrations.RegistrationForm[0]
+      Adding new registration with generated ID: 4696bb79-2363-442e-8b68-cd10930fb5f2 dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Services.RegistrationService[0]
+      Successfully added registration f5bf893e-4f69-416e-9812-808e8e7f7e31 for user a6 to event 2b60460b-25b6-4c09-be7d-e62fcd75b074 dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Components.Registrations.RegistrationForm[0]
+      Created new registration with ID: f5bf893e-4f69-416e-9812-808e8e7f7e31 dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Services.HybridRegistrationStateService[0]
+      Cleared new registration draft dotnet.runtime.d1pzlaz2ez.js:3:171638
+info: BlazorFinalProject.Services.HybridRegistrationStateService[0]
+      Registration form reset dotnet.runtime.d1pzlaz2ez.js:3:171638
+Starting registration submission for: a6 blazor.webassembly.js:1:45153
+Submitting registration via state service:  (EventId: 2b60460b-25b6-4c09-be7d-e62fcd75b074) blazor.webassembly.js:1:45153
+Error submitting registration: User name is required (Parameter 'registration') blazor.webassembly.js:1:45153
+
+
+GitHub Copilot: Looking at the console logs, I can see the issue clearly. The problem is that you have **two separate submission processes** happening:
+
+1. **First submission** (from `RegistrationForm.HandleSubmitAsync`) - ✅ **Succeeds**
+2. **Second submission** (from `EventDetailsPage.SubmitRegistrationAsync`) - ❌ **Fails** because the state was already reset
+
+The logs show:
+- Registration form saves successfully 
+- State gets reset (`Registration form reset`)
+- Then the parent component tries to submit with an empty state (`UserName` is required error)
+
+## Root Cause
+
+Your `RegistrationForm` is handling the submission **internally** and then calling the parent callback, but the parent callback is **also trying to submit** the registration again.
+
+## Solution: Fix the EventDetailsPage.SubmitRegistrationAsync
+
+Update your `EventDetailsPage.razor` to **not re-submit** since the form already handled it:
+
+````csharp
+private async Task SubmitRegistrationAsync(Registration reg)
+{
+    // Guard against double submission
+    if (isSubmitting) 
+    {
+        Console.WriteLine("Submission already in progress, ignoring duplicate call");
+        return;
+    }
+
+    try
+    {
+        isSubmitting = true;
+        Console.WriteLine($"Registration submitted successfully: {reg?.UserName} (ID: {reg?.Id})");
+
+        // The registration has already been saved by the form component
+        // We just need to handle the UI state changes here
+
+        // Reset to first page and reload the registrations list
+        currentRegistrationPage = 1;
+        await LoadRegistrationsAsync();
+        
+        // Hide the form
+        showForm = false;
+        
+        Console.WriteLine("Registration process completed successfully");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in post-submission processing: {ex.Message}");
+    }
+    finally
+    {
+        isSubmitting = false;
+    }
+}
+````
+
+## Alternative Solution: Move Logic Back to Parent
+
+If you prefer to keep the submission logic in the parent component, update the `RegistrationForm` to **not submit internally**:
+
+````csharp
+private async Task HandleSubmitAsync()
+{
+    if (IsSubmitting) return; // Prevent double submission
+
+    IsSubmitting = true;
+    ErrorMessage = string.Empty;
+    HasValidationErrors = false;
+
+    try
+    {
+        Logger.LogInformation("Preparing registration for submission: {UserName} (ID: {Id})", 
+            RegistrationState.CurrentRegistrationForm.UserName, 
+            RegistrationState.CurrentRegistrationForm.Id);
+
+        var registrationToSave = await PrepareRegistrationForSave();
+        
+        // DON'T save here - let the parent handle it
+        // Just call the parent callback with the prepared registration
+        await OnValidSubmitCallback.InvokeAsync(registrationToSave);
+        
+        // Reset state after successful callback
+        await RegistrationState.ResetRegistrationFormAsync();
+    }
+    catch (ValidationException ex)
+    {
+        ErrorMessage = ex.Message;
+        HasValidationErrors = true;
+        Logger.LogWarning("Validation error preparing registration: {Message}", ex.Message);
+    }
+    catch (Exception ex)
+    {
+        ErrorMessage = "An error occurred while processing the registration. Please try again.";
+        Logger.LogError(ex, "Error in form submission: {RegistrationId}", 
+            RegistrationState.CurrentRegistrationForm.Id);
+    }
+    finally
+    {
+        IsSubmitting = false;
+    }
+}
+
+// Remove the SaveRegistrationAsync method since parent will handle the actual saving
+````
+
+And keep your `EventDetailsPage.SubmitRegistrationAsync` as it was before:
+
+````csharp
+private async Task SubmitRegistrationAsync(Registration reg)
+{
+    // Guard against double submission
+    if (isSubmitting) 
+    {
+        Console.WriteLine("Submission already in progress, ignoring duplicate call");
+        return;
+    }
+
+    try
+    {
+        isSubmitting = true;
+        Console.WriteLine($"Starting registration submission for: {reg?.UserName}");
+
+        // Ensure EventId is set correctly
+        reg.EventId = EventId;
+        
+        Console.WriteLine($"Submitting registration: {reg.UserName} (EventId: {reg.EventId})");
+        
+        await RegistrationService.AddAsync(reg);
+
+        Console.WriteLine("Registration submitted successfully, refreshing data");
+
+        // Reset to first page and reload
+        currentRegistrationPage = 1;
+        await LoadRegistrationsAsync();
+        showForm = false;
+        
+        Console.WriteLine("Registration process completed successfully");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error submitting registration: {ex.Message}");
+    }
+    finally
+    {
+        isSubmitting = false;
+    }
+}
+````
+
+## Recommended Approach
+
+I recommend the **first solution** (fix EventDetailsPage) because:
+1. It's a smaller change
+2. The form component already has all the validation and error handling logic
+3. It keeps the submission logic encapsulated in the form component
+4. It eliminates the duplicate submission entirely
+
+The key insight is that you should choose **one place** to handle the actual service call - either in the form component or in the parent component, but not both.

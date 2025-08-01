@@ -1,0 +1,53 @@
+﻿@*
+    MainLayout Component
+    
+    Purpose: Provides the primary layout structure for the EventEase application with sidebar navigation, 
+    main content area, header, and footer sections.
+    
+    Features:
+    - Sidebar navigation with collapsible NavMenu component
+    - Header section with application logo and title
+    - Main content area for page-specific content rendering
+    - Footer with copyright information and logo
+    - Responsive layout structure with proper spacing
+    - Consistent branding across all pages
+    
+    Layout Structure:
+    - Left sidebar: Navigation menu for app-wide navigation
+    - Top header: Application branding and title
+    - Main content: Dynamic content area where pages are rendered
+    - Bottom footer: Copyright and company information
+    
+    Dependencies:
+    - LayoutComponentBase: Base class for Blazor layout components
+    - NavMenu: Navigation component for sidebar menu
+    - Application logos: white-clear-icon-192.png and white-clear-icon-32.png
+    - CSS classes for layout styling and positioning
+    
+    Usage: Serves as the base layout for all pages in the EventEase application, automatically applied 
+    through the routing system to provide consistent navigation and branding.
+*@
+
+@inherits LayoutComponentBase
+
+<div class="page-layout">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <div class="main-content-area">
+        <div class="top-row px-4">
+            <img src="images/white-clear-icon-192.png" alt="EventEase Logo" class="logo" />
+            <h3>EventEase Events Manager Application</h3>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+
+        <footer class="app-footer">
+            <img src="images/white-clear-icon-32.png" alt="EventEase Logo" class="logo" />
+            © @DateTime.Now.Year EventEase Event Consultants — All rights reserved.
+        </footer>
+    </div>
+</div>

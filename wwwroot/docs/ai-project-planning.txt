@@ -1,0 +1,1692 @@
+Date: 20250630
+Conversation Title: Project Planning for the EventEase Application
+
+Prompt:
+Can you play the role of a subject matter expert in developing Blazor applications in Visual Studio Code using DotNet and C# version 8?
+
+Response:
+Absolutely, Kevin. I’d be glad to serve as your resident Blazor whisperer—deep dives, best practices, code walkthroughs, architectural patterns—you name it. Since you’re working with Visual Studio Code and .NET with C# 8, we’ll optimize for a lean, efficient setup with full control over tooling.
+
+Whether you’re building out modular components with scoped CSS, persisting data using IndexedDB, or layering in clean architecture for that event manager app, I can guide you through every twist and turn. Think of me as your co-pilot for Blazor WASM builds that are both elegant and robust.
+
+What would you like to tackle first—component structure, service integration, routing logic, or something else entirely?
+
+Prompt:
+Please help me define the requirements for an event management application built with Blazor using C# version 8. The application will use and extend the existing Blazor WASM application template provided by the DotNet CLI. The intention behind this development process is to fast prototype an application for demonstration to the users.
+
+Use cases include:
+A user can browse a list of events.
+The events are displayed in the list as cards.
+An event record has details such as event name, date, location, and notes.
+A user can register for a selected event.
+A user registration record has details such user name, telephone number, email address, and notes.
+Selecting an individual event from the list will display the event details and a list of registered participants.
+The events details page will provide a button to open the registration form to add the user to the list of registered participants.
+
+Required pages and components include:
+Events: All pages and shared components required for full CRUD operations. The data fields will use two-way binding.
+Registration: All pages and shared components required for full CRUD operations. The data fields will use two-way binding.
+The lists for events and participants will be displayed as cards.
+Please suggest generic components according to best practices.
+The UI pages and components will be styled with BootStrap.
+
+Please suggest a folders and files structure for the application that build upon the existing Blazor WASM application template.
+
+Response:
+You’ve laid out a clear and well-scoped foundation, Kevin—this has all the right ingredients for a fast, elegant demo-ready prototype. Let’s break it down in three parts: **functional requirements**, **recommended components**, and a clean, extensible **folder/file structure** that dovetails nicely with the standard `dotnet new blazorwasm` template.
+
+---
+
+### ✅ Functional Requirements Summary
+
+**Core Use Cases**
+- Browse events in a card-based list view.
+- View details for a selected event.
+- Display list of participants for the selected event.
+- Register a user for an event via a form.
+- Full CRUD support for both events and registrations.
+  
+**Data Models**
+- `Event`: Name, Date, Location, Notes, ID.
+- `Registration`: EventID (FK), UserName, Phone, Email, Notes, ID.
+
+---
+
+### 🧩 Generic Reusable Components (with Two-Way Binding)
+
+| Component              | Purpose                                                              |
+|------------------------|----------------------------------------------------------------------|
+| `CardList<TItem>`      | Displays generic list of items as Bootstrap cards using `RenderFragment<TItem>` |
+| `CardItem<TItem>`      | Displays a single item’s card view; used by `CardList`               |
+| `EntityForm<T>`        | Reusable edit/create form for both Event and Registration            |
+| `ModalDialog`          | Generic Bootstrap-styled modal component for confirmation/input       |
+| `DetailsView<T>`       | Renders item details using layout templates (like for Event detail)   |
+| `ValidationSummary`    | Displays form validation results (built-in or custom)                |
+| `InputGroupWrapper`    | Wraps Bootstrap-styled input controls with labels/help text          |
+| `ConfirmDeleteDialog`  | Specialized modal for delete confirmation                            |
+
+These should follow **Blazor component best practices**: cascading parameters (e.g., theme or error handling), scoped CSS, and null-safe bindings.
+
+---
+
+### 🗂️ Suggested Folder & File Structure
+
+Here’s an updated structure building off the CLI’s default Blazor WASM template:
+
+```
+Client/
+├── Components/
+│   ├── Shared/
+│   │   ├── CardList.razor
+│   │   ├── CardItem.razor
+│   │   ├── ModalDialog.razor
+│   │   ├── ConfirmDeleteDialog.razor
+│   │   └── InputGroupWrapper.razor
+│   ├── Events/
+│   │   ├── EventCard.razor
+│   │   ├── EventForm.razor
+│   │   └── EventDetails.razor
+│   └── Registrations/
+│       ├── RegistrationCard.razor
+│       ├── RegistrationForm.razor
+│       └── RegistrationList.razor
+├── Pages/
+│   ├── Events/
+│   │   ├── EventsPage.razor
+│   │   └── EventDetailsPage.razor
+│   └── Registrations/
+│       └── RegistrationPage.razor
+├── Services/
+│   ├── Interfaces/
+│   │   ├── IEventService.cs
+│   │   └── IRegistrationService.cs
+│   ├── EventService.cs
+│   └── RegistrationService.cs
+├── Models/
+│   ├── Event.cs
+│   └── Registration.cs
+├── wwwroot/
+│   ├── css/
+│   │   └── site.css (use Bootstrap customization here)
+│   └── index.html
+├── Program.cs
+└── App.razor
+```
+
+Bonus tip: if you’re planning to persist the data locally for the prototype, `IndexedDB` repository services can live in `Services/Storage/IndexedDB/` with adapters implementing your domain interfaces.
+
+---
+
+Would you like a sample `EventCard.razor` and `EventForm.razor` next—or perhaps a walkthrough of a service layer interface with mock data?
+
+Prompt:
+Can you provide sample code for EventCard.razor and EventForm.razor?
+
+Response:
+Absolutely, Kevin! Here’s a first pass at those components, designed with Bootstrap styling, two-way binding, and reusability in mind. They follow your modular goals and can be slotted neatly into the structure we defined earlier.
+
+---
+
+### 📇 `EventCard.razor`
+
+```razor
+@using YourApp.Models
+@typeparam TEvent
+@inject NavigationManager NavigationManager
+
+<div class="card mb-3 shadow-sm">
+    <div class="card-body">
+        <h5 class="card-title">@Event.Name</h5>
+        <h6 class="card-subtitle mb-2 text-muted">@Event.Date.ToShortDateString()</h6>
+        <p class="card-text"><strong>Location:</strong> @Event.Location</p>
+        @if (!string.IsNullOrWhiteSpace(Event.Notes))
+        {
+            <p class="card-text text-muted">@Event.Notes</p>
+        }
+        <button class="btn btn-primary" @onclick="NavigateToDetails">View Details</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public TEvent Event { get; set; }
+    [Parameter] public string DetailsPageUri { get; set; }
+
+    private void NavigateToDetails()
+    {
+        NavigationManager.NavigateTo($"{DetailsPageUri}/{Event.Id}");
+    }
+}
+```
+
+> 💡 Make `DetailsPageUri` configurable (e.g., `/events/details`) to keep this component generic.
+
+---
+
+### 📝 `EventForm.razor`
+
+```razor
+@using YourApp.Models
+@typeparam TEvent
+
+<EditForm Model="Event" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Event Name</label>
+        <InputText @bind-Value="Event.Name" class="form-control" id="name" />
+    </div>
+
+    <div class="mb-3">
+        <label for="date" class="form-label">Date</label>
+        <InputDate @bind-Value="Event.Date" class="form-control" id="date" />
+    </div>
+
+    <div class="mb-3">
+        <label for="location" class="form-label">Location</label>
+        <InputText @bind-Value="Event.Location" class="form-control" id="location" />
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <InputTextArea @bind-Value="Event.Notes" class="form-control" id="notes" />
+    </div>
+
+    <button type="submit" class="btn btn-success me-2">Save</button>
+    <button type="button" class="btn btn-secondary" @onclick="OnCancel">Cancel</button>
+</EditForm>
+
+@code {
+    [Parameter] public TEvent Event { get; set; }
+    [Parameter] public EventCallback<TEvent> OnValidSubmitCallback { get; set; }
+    [Parameter] public EventCallback OnCancelCallback { get; set; }
+
+    private async Task HandleValidSubmit()
+    {
+        await OnValidSubmitCallback.InvokeAsync(Event);
+    }
+
+    private async Task OnCancel()
+    {
+        await OnCancelCallback.InvokeAsync();
+    }
+}
+```
+
+> 🧠 For real flexibility, consider wrapping this in a `ModalDialog` and injecting default values into the `Event` model before passing it in.
+
+---
+
+Next up, I can help with the `EventService.cs` and a mock data provider if you're ready to simulate persistence—or would you rather move over to the `RegistrationCard` and `RegistrationForm`?
+
+Prompt:
+Can you please help with the `EventService.cs` and a mock data provider. I would like to simulate persistence.
+
+Response:
+You bet, Kevin—mocking persistence is the perfect move when fast-prototyping in Blazor, especially for demos or isolated front-end testing. Below is a lightweight, extensible `EventService` implementation using an in-memory list as our "database."
+
+---
+
+### 🛠 `IEventService.cs`
+
+Let’s define a simple interface for CRUD operations:
+
+```csharp
+using YourApp.Models;
+
+public interface IEventService
+{
+    Task<List<Event>> GetAllAsync();
+    Task<Event> GetByIdAsync(int id);
+    Task AddAsync(Event evt);
+    Task UpdateAsync(Event evt);
+    Task DeleteAsync(int id);
+}
+```
+
+---
+
+### 🧪 `MockEventService.cs`
+
+```csharp
+using YourApp.Models;
+using System.Collections.Concurrent;
+
+public class MockEventService : IEventService
+{
+    private readonly ConcurrentDictionary<int, Event> _events = new();
+    private int _currentId = 0;
+
+    public MockEventService()
+    {
+        // Seed data
+        var initialEvents = new[]
+        {
+            new Event { Name = "Developer Summit", Date = DateTime.Today.AddDays(5), Location = "Chicago", Notes = "Tech insights from top minds." },
+            new Event { Name = "UX Workshop", Date = DateTime.Today.AddDays(12), Location = "Remote", Notes = "Hands-on UI prototyping." }
+        };
+
+        foreach (var evt in initialEvents)
+        {
+            evt.Id = ++_currentId;
+            _events[evt.Id] = evt;
+        }
+    }
+
+    public Task<List<Event>> GetAllAsync() =>
+        Task.FromResult(_events.Values.ToList());
+
+    public Task<Event> GetByIdAsync(int id) =>
+        Task.FromResult(_events.TryGetValue(id, out var evt) ? evt : null);
+
+    public Task AddAsync(Event evt)
+    {
+        evt.Id = ++_currentId;
+        _events[evt.Id] = evt;
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateAsync(Event evt)
+    {
+        if (_events.ContainsKey(evt.Id))
+            _events[evt.Id] = evt;
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(int id)
+    {
+        _events.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+}
+```
+
+> ⚠️ `ConcurrentDictionary` ensures thread safety, which is handy during rapid UI interactions or testing.
+
+---
+
+### 🔌 Registration in `Program.cs`
+
+In your `Client/Program.cs`:
+
+```csharp
+builder.Services.AddSingleton<IEventService, MockEventService>();
+```
+
+> Use `Singleton` here so the data isn’t reset on every navigation or reload during development.
+
+---
+
+With this setup, you’ve got an instant playground for CRUD operations—no back end required. Want to follow up with a `RegistrationService` using the same approach, or wire this into your `EventsPage.razor` next?
+
+Prompt:
+How do I connect this mock service to my Blazor UI?
+
+Response:
+Great question, Kevin! Here's how you can seamlessly connect your `MockEventService` to your UI so the event list, detail view, and form components talk directly to it.
+
+---
+
+### 1. ✅ **Register the Service in `Program.cs`**
+
+Make sure this line is in `Client/Program.cs` to register the mock service with the dependency injection container:
+
+```csharp
+builder.Services.AddSingleton<IEventService, MockEventService>();
+```
+
+> You’ve likely done this already—but it’s worth double-checking.
+
+---
+
+### 2. 🧩 **Inject the Service into a Razor Page**
+
+Let’s say you’re working inside `Pages/Events/EventsPage.razor`. Inject the service like this at the top:
+
+```razor
+@inject IEventService EventService
+```
+
+Now you can call the service methods directly in your component logic:
+
+```razor
+@code {
+    private List<Event> events;
+
+    protected override async Task OnInitializedAsync()
+    {
+        events = await EventService.GetAllAsync();
+    }
+}
+```
+
+---
+
+### 3. 🎯 **Render Events Using Your Custom `EventCard` Component**
+
+Once you have your `events` list populated:
+
+```razor
+@foreach (var evt in events)
+{
+    <EventCard Event="evt" DetailsPageUri="/events/details" />
+}
+```
+
+If you're using a generic `CardList<TItem>`, you can pass a `RenderFragment<TItem>` like this:
+
+```razor
+<CardList Items="events">
+    <Template>
+        <EventCard Event="context" DetailsPageUri="/events/details" />
+    </Template>
+</CardList>
+```
+
+---
+
+### 4. 💾 **Handling Adds and Edits**
+
+When using `EventForm.razor`, you'll pass in the `Event` model and callbacks to invoke `AddAsync()` or `UpdateAsync()`:
+
+```razor
+<EventForm Event="selectedEvent"
+           OnValidSubmitCallback="SaveEvent"
+           OnCancelCallback="CancelEdit" />
+```
+
+With a handler like:
+
+```csharp
+private async Task SaveEvent(Event evt)
+{
+    if (evt.Id == 0)
+        await EventService.AddAsync(evt);
+    else
+        await EventService.UpdateAsync(evt);
+
+    events = await EventService.GetAllAsync(); // Refresh
+}
+```
+
+---
+
+This pattern keeps your UI clean, modular, and fully decoupled from the data implementation. Want me to help scaffold `EventsPage.razor` next or integrate delete functionality with the `ConfirmDeleteDialog`?
+
+Prompt:
+Can you help me scaffold a full EventsPage.razor component?
+
+Response:
+Absolutely, Kevin—let’s scaffold a full-featured `EventsPage.razor` that ties your mock service, `EventCard` components, and the form logic together into a cohesive user experience. This version includes:
+
+- Event listing
+- New/edit form toggling
+- Delete with confirmation
+- Integration with `IEventService`
+
+---
+
+### 📄 `EventsPage.razor`
+
+```razor
+@page "/events"
+@using YourApp.Models
+@inject IEventService EventService
+
+<h2 class="mb-4">Manage Events</h2>
+
+@if (showForm)
+{
+    <EventForm Event="selectedEvent"
+               OnValidSubmitCallback="SaveEventAsync"
+               OnCancelCallback="CancelEditAsync" />
+}
+else
+{
+    <button class="btn btn-primary mb-3" @onclick="AddNewEvent">Add New Event</button>
+
+    @if (events?.Any() == true)
+    {
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+            @foreach (var evt in events)
+            {
+                <div class="col">
+                    <EventCard Event="evt" DetailsPageUri="/events/details" />
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-secondary me-2" @onclick="@(() => EditEvent(evt))">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="@(() => ConfirmDelete(evt))">Delete</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <p>No events found. Why not create one?</p>
+    }
+}
+
+<ModalDialog @ref="confirmDialog"
+             Title="Confirm Delete"
+             OnConfirm="DeleteConfirmedAsync">
+    Are you sure you want to delete this event?
+</ModalDialog>
+
+@code {
+    private List<Event> events = new();
+    private Event selectedEvent;
+    private bool showForm = false;
+    private Event eventToDelete;
+    private ModalDialog confirmDialog;
+
+    protected override async Task OnInitializedAsync()
+    {
+        events = await EventService.GetAllAsync();
+    }
+
+    private void AddNewEvent()
+    {
+        selectedEvent = new Event();
+        showForm = true;
+    }
+
+    private void EditEvent(Event evt)
+    {
+        selectedEvent = new Event
+        {
+            Id = evt.Id,
+            Name = evt.Name,
+            Date = evt.Date,
+            Location = evt.Location,
+            Notes = evt.Notes
+        };
+        showForm = true;
+    }
+
+    private async Task SaveEventAsync(Event evt)
+    {
+        if (evt.Id == 0)
+            await EventService.AddAsync(evt);
+        else
+            await EventService.UpdateAsync(evt);
+
+        events = await EventService.GetAllAsync();
+        showForm = false;
+    }
+
+    private async Task CancelEditAsync()
+    {
+        showForm = false;
+        selectedEvent = null;
+    }
+
+    private void ConfirmDelete(Event evt)
+    {
+        eventToDelete = evt;
+        confirmDialog.Show();
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (eventToDelete is not null)
+        {
+            await EventService.DeleteAsync(eventToDelete.Id);
+            events = await EventService.GetAllAsync();
+        }
+    }
+}
+```
+
+---
+
+Let me know if you'd like the matching `EventDetailsPage.razor` scaffolded next—or want to wire this with IndexedDB instead of a volatile in-memory store for more persistent local demos.
+
+Prompt:
+I'd like the matching EventDetailsPage.razor scaffolded next.
+
+Response:
+Perfect, Kevin. Let's scaffold `EventDetailsPage.razor` to display a selected event’s full details along with a list of registered participants, plus a button to open the registration form. This page assumes you’re passing the event ID via route parameter and calling `IEventService` to load data.
+
+---
+
+### 📄 `EventDetailsPage.razor`
+
+```razor
+@page "/events/details/{EventId:int}"
+@using YourApp.Models
+@inject IEventService EventService
+@inject NavigationManager NavigationManager
+
+<h3>Event Details</h3>
+
+@if (eventDetails is null)
+{
+    <p><em>Loading event details...</em></p>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title">@eventDetails.Name</h4>
+            <h6 class="card-subtitle mb-2 text-muted">@eventDetails.Date.ToShortDateString()</h6>
+            <p class="card-text"><strong>Location:</strong> @eventDetails.Location</p>
+            <p class="card-text">@eventDetails.Notes</p>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <button class="btn btn-success" @onclick="ShowRegistrationForm">Register for this Event</button>
+    </div>
+
+    @if (showForm)
+    {
+        <RegistrationForm Registration="newRegistration"
+                          OnValidSubmitCallback="SubmitRegistrationAsync"
+                          OnCancelCallback="CancelRegistrationAsync" />
+    }
+
+    <h5 class="mt-4">Registered Participants</h5>
+
+    @if (registrations?.Any() == true)
+    {
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+            @foreach (var reg in registrations)
+            {
+                <div class="col">
+                    <RegistrationCard Registration="reg" />
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <p>No registrations yet for this event.</p>
+    }
+}
+
+@code {
+    [Parameter] public int EventId { get; set; }
+
+    private Event eventDetails;
+    private List<Registration> registrations = new();
+    private bool showForm = false;
+    private Registration newRegistration;
+
+    protected override async Task OnInitializedAsync()
+    {
+        eventDetails = await EventService.GetByIdAsync(EventId);
+        await LoadRegistrationsAsync();
+    }
+
+    private async Task LoadRegistrationsAsync()
+    {
+        // Hook this to your IRegistrationService if needed
+        // For now, we're mocking empty registrations
+        registrations = new List<Registration>(); // Replace with actual load
+    }
+
+    private void ShowRegistrationForm()
+    {
+        newRegistration = new Registration
+        {
+            EventId = EventId
+        };
+        showForm = true;
+    }
+
+    private async Task SubmitRegistrationAsync(Registration reg)
+    {
+        // Submit to registration service here
+        showForm = false;
+        await LoadRegistrationsAsync();
+    }
+
+    private Task CancelRegistrationAsync()
+    {
+        showForm = false;
+        return Task.CompletedTask;
+    }
+}
+```
+
+---
+
+Once you implement your `IRegistrationService`, just plug in the actual participant data. Want me to help scaffold that service next—or polish the `RegistrationForm` to match this flow?
+
+Prompt:
+Can you please provide the code for the Event.cs model?
+
+Response:
+Absolutely, Kevin. Here’s a lean and flexible version of the `Event.cs` model, perfect for integration with your Blazor WASM app and mock services:
+
+```csharp
+using System;
+using System.ComponentModel.DataAnnotations;
+
+namespace YourApp.Models
+{
+    public class Event
+    {
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string Name { get; set; }
+
+        [Required]
+        public DateTime Date { get; set; }
+
+        [Required]
+        [StringLength(200)]
+        public string Location { get; set; }
+
+        [StringLength(500)]
+        public string Notes { get; set; }
+    }
+}
+```
+
+> 🧠 Tip: The `DataAnnotations` attributes are handy for `EditForm` validation in Blazor and keep things user-friendly out of the gate.
+
+If you’re using a shared library for models, you might want to move this into a dedicated `Shared/Models/` folder to keep cross-project references clean. Need help with the `Registration` model next—or maybe wiring up validation messages in your forms?
+
+Prompt:
+Can you please provide the code for the Registration.cs model?
+
+Response:
+Certainly, Kevin! Here’s a clean and Blazor-friendly `Registration.cs` model that complements your `Event.cs` class. It supports validation out of the box using `DataAnnotations` and includes a reference to the related event by ID:
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+namespace YourApp.Models
+{
+    public class Registration
+    {
+        public int Id { get; set; }
+
+        [Required]
+        public int EventId { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string UserName { get; set; }
+
+        [Phone]
+        [StringLength(20)]
+        public string Telephone { get; set; }
+
+        [EmailAddress]
+        [StringLength(100)]
+        public string EmailAddress { get; set; }
+
+        [StringLength(500)]
+        public string Notes { get; set; }
+    }
+}
+```
+
+This model ties directly into form components using Blazor’s built-in validation, making it ideal for your `RegistrationForm.razor` and participant lists.
+
+Let me know if you'd like help wiring up a mock `IRegistrationService` next, or if we should generate a list view to show these registrations under the event details.
+
+Prompt:
+Please create the roadmap for the development steps I'll need to follow to build this event manager Blazor WASM application using the fast prototype approach.
+
+Response:
+You got it, Kevin. Here's a streamlined development roadmap tailored to your fast-prototype approach—modular, iterative, and clean-architecture-friendly. We'll focus on progressive milestones that build momentum, minimize rewrites, and get you demo-ready quickly.
+
+---
+
+## 🧭 Fast-Prototyping Roadmap: Event Manager with Blazor WASM + C# 8
+
+### 🔹 Phase 1: Project Initialization & Planning
+1. **Create the base project**  
+   ```bash
+   dotnet new blazorwasm -n EventManagerApp
+   ```
+   - Set up Git repo, `.editorconfig`, and IDE configs in VS Code.
+
+2. **Define core models**  
+   - `Event.cs` and `Registration.cs` with Data Annotations.
+
+3. **Establish folder structure**  
+   - Create `Pages/`, `Components/Shared/`, `Components/Events/`, `Components/Registrations/`, `Services/`, `Models/`.
+
+---
+
+### 🔹 Phase 2: Mock Infrastructure & Services
+4. **Create `IEventService` & `MockEventService`**
+5. **(Optional) Stub `IRegistrationService` & `MockRegistrationService`**
+6. **Register services in `Program.cs` using `AddSingleton`**
+
+---
+
+### 🔹 Phase 3: Event Management Core UI
+7. **Build `EventCard.razor`** for card-based summary view
+8. **Build `EventForm.razor`** for create/edit functionality
+9. **Scaffold `EventsPage.razor`**  
+   - Renders cards  
+   - Hooks into form  
+   - Handles Add/Edit/Delete with confirmation modal
+
+---
+
+### 🔹 Phase 4: Event Details & Registration Entry
+10. **Scaffold `EventDetailsPage.razor`**  
+    - Accepts event ID  
+    - Renders full event detail  
+    - Displays related registrations
+
+11. **Create `RegistrationForm.razor`** with form validation
+12. **Create `RegistrationCard.razor`** for listing participants
+
+---
+
+### 🔹 Phase 5: Routing, UI Polish & Bootstrap Theming
+13. **Configure routing in `App.razor` and `NavMenu.razor`**
+14. **Apply Bootstrap 5 utility classes for layout + spacing**
+15. **Use `scoped.css` files for components (optional)**
+
+---
+
+### 🔹 Phase 6: Demo Readiness
+16. **Populate initial seed data in `MockEventService`**
+17. **Test end-to-end flows: Add/Edit/Delete Events + Registrations**
+18. **Polish error handling, empty states, and cancel buttons**
+19. **Deploy using GitHub Pages or Azure Static Web Apps (if needed)**
+
+---
+
+This roadmap aligns beautifully with your modular mindset and allows for iterative refinement. When you're ready, we can break any phase into a checklist of tasks or generate reusable Pages for quick experimentation.
+
+Want a printable checklist version or guidance on deployment once it’s demo-ready?
+
+Prompt:
+Can you please provide the example code That I will need to complete Phase 2: Mock Infrastructure & Services?
+
+Response:
+Absolutely, Kevin. Phase 2 is all about laying a rock-solid backend simulation foundation. Here's everything you’ll need to wire up a **mock infrastructure** using interfaces and in-memory services for both events and registrations.
+
+---
+
+## 🛠 1. Interfaces
+
+**`IEventService.cs`**
+
+```csharp
+using YourApp.Models;
+
+public interface IEventService
+{
+    Task<List<Event>> GetAllAsync();
+    Task<Event> GetByIdAsync(int id);
+    Task AddAsync(Event evt);
+    Task UpdateAsync(Event evt);
+    Task DeleteAsync(int id);
+}
+```
+
+**`IRegistrationService.cs`**
+
+```csharp
+using YourApp.Models;
+
+public interface IRegistrationService
+{
+    Task<List<Registration>> GetAllForEventAsync(int eventId);
+    Task<Registration> GetByIdAsync(int id);
+    Task AddAsync(Registration reg);
+    Task UpdateAsync(Registration reg);
+    Task DeleteAsync(int id);
+}
+```
+
+---
+
+## 🧪 2. Mock Service Implementations
+
+**`MockEventService.cs`**
+
+```csharp
+using YourApp.Models;
+using System.Collections.Concurrent;
+
+public class MockEventService : IEventService
+{
+    private readonly ConcurrentDictionary<int, Event> _events = new();
+    private int _currentId = 0;
+
+    public MockEventService()
+    {
+        var seed = new[]
+        {
+            new Event { Name = "Build Chicago", Date = DateTime.Today.AddDays(7), Location = "McCormick Place", Notes = "Day of hands-on tech." },
+            new Event { Name = "Azure AI Hack", Date = DateTime.Today.AddDays(14), Location = "Online", Notes = "Team-based AI challenge." }
+        };
+
+        foreach (var evt in seed)
+        {
+            evt.Id = ++_currentId;
+            _events[evt.Id] = evt;
+        }
+    }
+
+    public Task<List<Event>> GetAllAsync() =>
+        Task.FromResult(_events.Values.ToList());
+
+    public Task<Event> GetByIdAsync(int id) =>
+        Task.FromResult(_events.TryGetValue(id, out var evt) ? evt : null);
+
+    public Task AddAsync(Event evt)
+    {
+        evt.Id = ++_currentId;
+        _events[evt.Id] = evt;
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateAsync(Event evt)
+    {
+        _events[evt.Id] = evt;
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(int id)
+    {
+        _events.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+}
+```
+
+**`MockRegistrationService.cs`**
+
+```csharp
+using YourApp.Models;
+using System.Collections.Concurrent;
+
+public class MockRegistrationService : IRegistrationService
+{
+    private readonly ConcurrentDictionary<int, Registration> _registrations = new();
+    private int _currentId = 0;
+
+    public Task<List<Registration>> GetAllForEventAsync(int eventId)
+    {
+        var results = _registrations.Values
+            .Where(r => r.EventId == eventId)
+            .ToList();
+        return Task.FromResult(results);
+    }
+
+    public Task<Registration> GetByIdAsync(int id) =>
+        Task.FromResult(_registrations.TryGetValue(id, out var r) ? r : null);
+
+    public Task AddAsync(Registration reg)
+    {
+        reg.Id = ++_currentId;
+        _registrations[reg.Id] = reg;
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateAsync(Registration reg)
+    {
+        _registrations[reg.Id] = reg;
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(int id)
+    {
+        _registrations.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+}
+```
+
+---
+
+## 🔌 3. Service Registration (in `Program.cs`)
+
+Place these in your `Client/Program.cs`:
+
+```csharp
+builder.Services.AddSingleton<IEventService, MockEventService>();
+builder.Services.AddSingleton<IRegistrationService, MockRegistrationService>();
+```
+
+> 💡 Registering as `Singleton` keeps state alive across navigation during prototyping.
+
+---
+
+You’re now fully equipped to simulate event and registration workflows—no database, no backend, just pure front-end agility. When you’re ready, we can build the `RegistrationPage.razor` with full list and form support or hook these into the existing `EventDetailsPage`. Which path sounds more exciting right now?
+
+Prompt:
+Can you please provide a printable checklist version of the roadmap?
+
+Response:
+Here you go, Kevin—a printable, step-by-step checklist version of your **Event Manager Blazor WASM Application Roadmap**. I’ve grouped it by phase so you can track your progress at a glance and keep your workflow tidy and modular.
+
+---
+
+### ✅ Phase 1: Project Initialization & Planning
+- [ ] Create Blazor WASM app using `dotnet new blazorwasm`
+- [ ] Add Git repo, .editorconfig, and VS Code workspace files
+- [ ] Define `Event.cs` and `Registration.cs` models
+- [ ] Create folders: `Models/`, `Services/`, `Pages/`, `Components/Events/`, `Components/Registrations/`, `Components/Shared/`
+
+---
+
+### ✅ Phase 2: Mock Infrastructure & Services
+- [ ] Create `IEventService` and implement `MockEventService`
+- [ ] Create `IRegistrationService` and implement `MockRegistrationService`
+- [ ] Register both services in `Program.cs` with `AddSingleton()`
+
+---
+
+### ✅ Phase 3: Event Management UI
+- [ ] Build `EventCard.razor` to display event summaries
+- [ ] Build `EventForm.razor` for event creation and editing
+- [ ] Create reusable `ModalDialog.razor` for confirmations
+- [ ] Scaffold `EventsPage.razor` with add/edit/delete functionality
+
+---
+
+### ✅ Phase 4: Event Details & Participant Flow
+- [ ] Scaffold `EventDetailsPage.razor` to show event + participants
+- [ ] Build `RegistrationForm.razor` with full validation
+- [ ] Build `RegistrationCard.razor` for displaying registrant details
+
+---
+
+### ✅ Phase 5: UI Styling & Navigation
+- [ ] Style components using Bootstrap 5 classes
+- [ ] Add component-scoped CSS as needed
+- [ ] Configure navigation with `NavMenu.razor` and `App.razor`
+
+---
+
+### ✅ Phase 6: Final Polish & Demo
+- [ ] Seed realistic sample data in mock services
+- [ ] Test full CRUD: events and registrations
+- [ ] Handle empty states and validation errors
+- [ ] Deploy to GitHub Pages or Azure Static Web Apps (optional)
+
+---
+
+Let me know if you’d like this formatted as a downloadable `.md` file or in Word/PDF style for presentation—or if you’d like to build out a matching roadmap for feature enhancements after the prototype phase.
+
+Prompt:
+Please provide a checklist formatted as a downloadable .md file.
+
+Response:
+Sure thing, Kevin! Here's your **printable roadmap checklist** in Markdown format, ready to drop into a `.md` file:
+
+---
+
+**`event-manager-roadmap.md`**
+```markdown
+# ✅ Event Manager Blazor WASM Application – Fast Prototyping Roadmap
+
+## Phase 1: Project Initialization & Planning
+- [ ] Create Blazor WASM app using `dotnet new blazorwasm`
+- [ ] Initialize Git repo and configure `.editorconfig` + VS Code workspace
+- [ ] Define data models: `Event.cs` and `Registration.cs`
+- [ ] Set up folder structure:
+  - `Models/`
+  - `Services/`
+  - `Pages/`
+  - `Components/Events/`
+  - `Components/Registrations/`
+  - `Components/Shared/`
+
+---
+
+## Phase 2: Mock Infrastructure & Services
+- [ ] Create `IEventService` and `MockEventService`
+- [ ] Create `IRegistrationService` and `MockRegistrationService`
+- [ ] Register services in `Program.cs` via `AddSingleton`
+
+---
+
+## Phase 3: Event Management UI
+- [ ] Create `EventCard.razor` for displaying event summaries
+- [ ] Build `EventForm.razor` for add/edit functionality
+- [ ] Develop reusable `ModalDialog.razor` for confirmation
+- [ ] Scaffold `EventsPage.razor` with list, form, and delete flow
+
+---
+
+## Phase 4: Event Details & Participant Flow
+- [ ] Scaffold `EventDetailsPage.razor` to show event + registrations
+- [ ] Build `RegistrationForm.razor` with validation and data binding
+- [ ] Create `RegistrationCard.razor` for participant display
+
+---
+
+## Phase 5: UI Styling & Navigation
+- [ ] Style layout and components using Bootstrap 5
+- [ ] Add scoped CSS files for components as needed
+- [ ] Configure routing in `App.razor` and `NavMenu.razor`
+
+---
+
+## Phase 6: Final Polish & Demo
+- [ ] Seed sample data in mock services
+- [ ] Test full CRUD for both events and registrations
+- [ ] Add user feedback for empty states, validation, and edge cases
+- [ ] Deploy to GitHub Pages or Azure Static Web Apps (optional)
+```
+
+---
+
+You can copy this text into a new file like `event-manager-roadmap.md` and open it in VS Code or any Markdown previewer. Let me know if you'd like me to turn it into a downloadable file for you or generate a polished PDF next.
+
+Prompt:
+Build EventCard.razor to display event summaries.
+
+Response:
+Here you go, Kevin—your `EventCard.razor` component, optimized for concise event display with Bootstrap styling and navigation baked in. It’s a plug-and-play card that works seamlessly inside your event list or a generic `CardList<T>`.
+
+---
+
+### 📄 `EventCard.razor`
+
+```razor
+@using YourApp.Models
+@inject NavigationManager NavigationManager
+
+<div class="card shadow-sm h-100">
+    <div class="card-body">
+        <h5 class="card-title">@Event.Name</h5>
+        <h6 class="card-subtitle mb-2 text-muted">@Event.Date.ToShortDateString()</h6>
+        <p class="card-text"><strong>Location:</strong> @Event.Location</p>
+
+        @if (!string.IsNullOrWhiteSpace(Event.Notes))
+        {
+            <p class="card-text text-muted">@Event.Notes</p>
+        }
+
+        <button class="btn btn-primary mt-2" @onclick="NavigateToDetails">View Details</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Event Event { get; set; }
+
+    [Parameter]
+    public string DetailsPageUri { get; set; } = "/events/details";
+
+    private void NavigateToDetails()
+    {
+        NavigationManager.NavigateTo($"{DetailsPageUri}/{Event.Id}");
+    }
+}
+```
+
+---
+
+💡 **Usage Tip**: Inside your `EventsPage.razor`, just drop this inside a loop:
+
+```razor
+@foreach (var evt in events)
+{
+    <EventCard Event="evt" DetailsPageUri="/events/details" />
+}
+```
+
+Ready to tackle `CardList<T>` next to create a clean reusable wrapper for these cards—or want to go deeper into component styling and scoped CSS strategies?
+
+Prompt:
+Build EventForm.razor for event creation and editing.
+
+Response:
+Absolutely, Kevin! Here's a fully functional `EventForm.razor` component that leverages **data binding**, **form validation**, and **Bootstrap styling** for a polished user experience. It’s designed to support both creating new events and editing existing ones, following Blazor best practices.
+
+---
+
+### 📄 `EventForm.razor`
+
+```razor
+@using YourApp.Models
+@inherits LayoutComponentBase
+
+<EditForm Model="Event"
+          OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Event Name</label>
+        <InputText id="name" class="form-control" @bind-Value="Event.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label for="date" class="form-label">Event Date</label>
+        <InputDate id="date" class="form-control" @bind-Value="Event.Date" />
+    </div>
+
+    <div class="mb-3">
+        <label for="location" class="form-label">Location</label>
+        <InputText id="location" class="form-control" @bind-Value="Event.Location" />
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <InputTextArea id="notes" class="form-control" @bind-Value="Event.Notes" rows="3" />
+    </div>
+
+    <button type="submit" class="btn btn-success me-2">Save</button>
+    <button type="button" class="btn btn-secondary" @onclick="CancelAsync">Cancel</button>
+</EditForm>
+
+@code {
+    [Parameter, EditorRequired]
+    public Event Event { get; set; }
+
+    [Parameter]
+    public EventCallback<Event> OnValidSubmitCallback { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelCallback { get; set; }
+
+    private async Task HandleValidSubmit()
+    {
+        await OnValidSubmitCallback.InvokeAsync(Event);
+    }
+
+    private async Task CancelAsync()
+    {
+        await OnCancelCallback.InvokeAsync();
+    }
+}
+```
+
+---
+
+🧠 **Usage Tip**: You can bind this to a parent page like `EventsPage.razor` by initializing the `Event` model in `OnInitializedAsync` and wiring up the callbacks for saving and canceling.
+
+Let me know if you'd like this wrapped in a modal with controlled visibility, or extended with cascading validation logic. Ready to generate the `RegistrationForm.razor` next?
+
+Prompt:
+Create reusable `ModalDialog.razor` for confirmations.
+
+Response:
+Here’s a flexible and Bootstrap-styled `ModalDialog.razor`, Kevin, built to support confirmations, alerts, or embedded forms. It uses `RenderFragment` parameters to make content injection effortless and integrates seamlessly into your prototype app.
+
+---
+
+### 📄 `ModalDialog.razor`
+
+```razor
+<div class="modal fade @(IsVisible ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @if (!string.IsNullOrWhiteSpace(Title))
+            {
+                <div class="modal-header">
+                    <h5 class="modal-title">@Title</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseAsync"></button>
+                </div>
+            }
+
+            <div class="modal-body">
+                @ChildContent
+            </div>
+
+            <div class="modal-footer">
+                @if (OnConfirm.HasDelegate)
+                {
+                    <button class="btn btn-primary" @onclick="ConfirmAsync">Confirm</button>
+                }
+                <button class="btn btn-secondary" @onclick="CloseAsync">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool IsVisible { get; set; }
+
+    [Parameter] public string Title { get; set; } = "Confirm";
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+
+    public void Show() => IsVisible = true;
+
+    public async Task CloseAsync()
+    {
+        IsVisible = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task ConfirmAsync()
+    {
+        if (OnConfirm.HasDelegate)
+            await OnConfirm.InvokeAsync(null);
+
+        await CloseAsync();
+    }
+}
+```
+
+---
+
+### 🧠 Usage Example
+
+In a parent component like `EventsPage.razor`:
+
+```razor
+<ModalDialog @ref="confirmDialog"
+             Title="Delete Event"
+             OnConfirm="HandleDelete">
+    Are you sure you want to delete this event?
+</ModalDialog>
+```
+
+And in the code-behind:
+
+```csharp
+private ModalDialog confirmDialog;
+
+private void PromptDelete()
+{
+    confirmDialog.Show();
+}
+
+private async Task HandleDelete()
+{
+    await EventService.DeleteAsync(selectedEvent.Id);
+}
+```
+
+This component keeps your UI DRY, clean, and testable. Want me to extend it with an `OnCancel` callback or make it support custom button templates?
+
+Prompt:
+Please extend it with an OnCancel callback.
+
+Response:
+Absolutely, Kevin—here’s the enhanced version of `ModalDialog.razor` with an `OnCancel` callback added for greater control and composability in parent components.
+
+---
+
+### 📄 Updated `ModalDialog.razor`
+
+```razor
+<div class="modal fade @(IsVisible ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @if (!string.IsNullOrWhiteSpace(Title))
+            {
+                <div class="modal-header">
+                    <h5 class="modal-title">@Title</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CancelAsync"></button>
+                </div>
+            }
+
+            <div class="modal-body">
+                @ChildContent
+            </div>
+
+            <div class="modal-footer">
+                @if (OnConfirm.HasDelegate)
+                {
+                    <button class="btn btn-primary" @onclick="ConfirmAsync">Confirm</button>
+                }
+                <button class="btn btn-secondary" @onclick="CancelAsync">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool IsVisible { get; set; }
+
+    [Parameter] public string Title { get; set; } = "Confirm";
+    [Parameter] public RenderFragment ChildContent { get; set; }
+
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    public void Show() => IsVisible = true;
+
+    private async Task CancelAsync()
+    {
+        IsVisible = false;
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (OnConfirm.HasDelegate)
+        {
+            await OnConfirm.InvokeAsync();
+        }
+        await CancelAsync();
+    }
+}
+```
+
+---
+
+This allows a parent component to react to the dismissal explicitly:
+
+```razor
+<ModalDialog @ref="confirmDialog"
+             Title="Delete Confirmation"
+             OnConfirm="DeleteItemAsync"
+             OnCancel="ClearPendingDelete" />
+```
+
+Let me know if you’d like it to support dynamic footer buttons next or make it a generic `ModalDialog<T>` that binds to typed input content. We can definitely build a whole dialog system from here.
+
+Prompt:
+Scaffold `EventDetailsPage.razor` to show event + participants.
+
+Response:
+Absolutely, Kevin. Here's a full scaffold of `EventDetailsPage.razor`, purpose-built to show a selected event’s detailed information alongside a list of registered participants. It includes:
+
+- Loading event details by ID from route parameters  
+- Listing participants via `IRegistrationService`  
+- Toggling a registration form  
+- Clean layout with Bootstrap styling  
+
+---
+
+### 📄 `EventDetailsPage.razor`
+
+```razor
+@page "/events/details/{EventId:int}"
+@using YourApp.Models
+@inject IEventService EventService
+@inject IRegistrationService RegistrationService
+
+<h3 class="mb-4">Event Details</h3>
+
+@if (eventDetails is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title">@eventDetails.Name</h4>
+            <h6 class="card-subtitle mb-2 text-muted">@eventDetails.Date.ToShortDateString()</h6>
+            <p><strong>Location:</strong> @eventDetails.Location</p>
+            <p>@eventDetails.Notes</p>
+        </div>
+    </div>
+
+    <button class="btn btn-success mb-3" @onclick="ShowRegistrationForm">Register for this Event</button>
+
+    @if (showForm)
+    {
+        <RegistrationForm Registration="newRegistration"
+                          OnValidSubmitCallback="SubmitRegistrationAsync"
+                          OnCancelCallback="CancelRegistrationAsync" />
+    }
+
+    <h5 class="mt-4">Registered Participants</h5>
+
+    @if (registrations?.Any() == true)
+    {
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+            @foreach (var reg in registrations)
+            {
+                <div class="col">
+                    <RegistrationCard Registration="reg" />
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <p class="text-muted">No registrations yet for this event.</p>
+    }
+}
+
+@code {
+    [Parameter] public int EventId { get; set; }
+
+    private Event eventDetails;
+    private List<Registration> registrations = new();
+    private bool showForm = false;
+    private Registration newRegistration;
+
+    protected override async Task OnInitializedAsync()
+    {
+        eventDetails = await EventService.GetByIdAsync(EventId);
+        await LoadRegistrationsAsync();
+    }
+
+    private async Task LoadRegistrationsAsync()
+    {
+        registrations = await RegistrationService.GetAllForEventAsync(EventId);
+    }
+
+    private void ShowRegistrationForm()
+    {
+        newRegistration = new Registration { EventId = EventId };
+        showForm = true;
+    }
+
+    private async Task SubmitRegistrationAsync(Registration reg)
+    {
+        await RegistrationService.AddAsync(reg);
+        await LoadRegistrationsAsync();
+        showForm = false;
+    }
+
+    private Task CancelRegistrationAsync()
+    {
+        showForm = false;
+        return Task.CompletedTask;
+    }
+}
+```
+
+---
+
+Let me know if you’d like to add delete/edit support for registrations here too, or if we should shift focus to the `RegistrationForm.razor` or `RegistrationCard.razor` scaffolds next.
+
+Prompt:
+Scaffold `RegistrationForm.razor` with full validation.
+
+Response:
+Here's a polished `RegistrationForm.razor` component, Kevin—built to match your prototype architecture, complete with full validation and Bootstrap styling. It supports both creating and editing registrations, with proper input annotations and responsive layout.
+
+---
+
+### 📄 `RegistrationForm.razor`
+
+```razor
+@using YourApp.Models
+@inherits LayoutComponentBase
+
+<EditForm Model="Registration" OnValidSubmit="HandleSubmitAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label for="userName" class="form-label">Name</label>
+        <InputText id="userName" class="form-control" @bind-Value="Registration.UserName" />
+    </div>
+
+    <div class="mb-3">
+        <label for="telephone" class="form-label">Telephone</label>
+        <InputText id="telephone" class="form-control" @bind-Value="Registration.Telephone" />
+    </div>
+
+    <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <InputText id="email" class="form-control" @bind-Value="Registration.EmailAddress" />
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <InputTextArea id="notes" class="form-control" @bind-Value="Registration.Notes" rows="3" />
+    </div>
+
+    <button type="submit" class="btn btn-success me-2">Submit</button>
+    <button type="button" class="btn btn-secondary" @onclick="CancelAsync">Cancel</button>
+</EditForm>
+
+@code {
+    [Parameter, EditorRequired]
+    public Registration Registration { get; set; }
+
+    [Parameter]
+    public EventCallback<Registration> OnValidSubmitCallback { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelCallback { get; set; }
+
+    private async Task HandleSubmitAsync()
+    {
+        await OnValidSubmitCallback.InvokeAsync(Registration);
+    }
+
+    private async Task CancelAsync()
+    {
+        await OnCancelCallback.InvokeAsync();
+    }
+}
+```
+
+---
+
+This integrates beautifully with your `EventDetailsPage.razor` and uses the same validation rules you defined in `Registration.cs`. Next up, I can generate the `RegistrationCard.razor` to list participants in style—or wrap this form in a modal if you're ready to streamline the UX. Your call!
+
+Prompt:
+Scaffold `RegistrationCard.razor` for displaying registrant details.
+
+Response:
+Certainly, Kevin! Here's a streamlined and Bootstrap-styled `RegistrationCard.razor` component that neatly displays participant information in a card layout. This pairs beautifully with the registration listing in `EventDetailsPage.razor`.
+
+---
+
+### 📄 `RegistrationCard.razor`
+
+```razor
+@using YourApp.Models
+
+<div class="card shadow-sm h-100">
+    <div class="card-body">
+        <h5 class="card-title">@Registration.UserName</h5>
+
+        @if (!string.IsNullOrWhiteSpace(Registration.EmailAddress))
+        {
+            <p class="card-text mb-1"><strong>Email:</strong> @Registration.EmailAddress</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Registration.Telephone))
+        {
+            <p class="card-text mb-1"><strong>Phone:</strong> @Registration.Telephone</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Registration.Notes))
+        {
+            <p class="card-text text-muted">@Registration.Notes</p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Registration Registration { get; set; }
+}
+```
+
+---
+
+You can drop these into a responsive grid like so:
+
+```razor
+@foreach (var reg in registrations)
+{
+    <div class="col">
+        <RegistrationCard Registration="reg" />
+    </div>
+}
+```
+
+If you’re considering edit/delete functionality later, we could enhance this with an optional action panel or button slot. Want to go that direction next or keep this one clean and readonly for now?
+
+Prompt:
+Configure navigation with `NavMenu.razor` and `App.razor`.
+
+Response:
+You’ve got it, Kevin. Let’s wire up routing and navigation so users can move smoothly between the event list and the details/registration flow. Here's how to configure both `App.razor` and `NavMenu.razor`.
+
+---
+
+### 📄 `App.razor`
+
+This file defines the routing host and layout for your Blazor app.
+
+```razor
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p role="alert">Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+```
+
+> ✅ Make sure you’ve defined route templates in your pages like:
+```razor
+@page "/events"
+@page "/events/details/{EventId:int}"
+```
+
+---
+
+### 📄 `Shared/NavMenu.razor`
+
+Here’s a minimal update to give users links to your key pages:
+
+```razor
+<NavMenu>
+
+    <div class="nav-item px-3">
+        <NavLink class="nav-link" href="/">
+            <span class="oi oi-home" aria-hidden="true"></span> Home
+        </NavLink>
+    </div>
+
+    <div class="nav-item px-3">
+        <NavLink class="nav-link" href="/events">
+            <span class="oi oi-calendar" aria-hidden="true"></span> Manage Events
+        </NavLink>
+    </div>
+
+</NavMenu>
+```
+
+Make sure the `.oi` icons come from Bootstrap Icons or include a custom icon solution—or remove them if you’re not using an icon font.
+
+---
+
+### 🧠 Optional: Clean up navigation behavior
+
+If you want to auto-focus or scroll to top when navigating, Blazor's built-in `FocusOnNavigate` (shown above in `App.razor`) helps with accessibility. You can also customize active styling with:
+
+```razor
+<NavLink class="nav-link" href="/events" Match="NavLinkMatch.All">
+```
+
+---
+
+Your routes are now fully connected! Let me know if you'd like to add breadcrumbs, track route state with a layout component, or configure nested routing for future admin pages.
+

@@ -1,0 +1,3760 @@
+Date: 20250727-20250728
+Conversation Title: Create Code File Summary Comments
+
+Key
+dotnetmurf: - Prompt
+GitHub Copilot: - Response
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Components/Events/EventCard.razor`]EventCard.razor ) file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    EventCard Component
+    
+    Purpose: Displays a single event in a Bootstrap card format with header, body, and footer sections.
+    
+    Features:
+    - Shows event name in a primary-colored header
+    - Displays event details and statistics in the card body via EventDetails component
+    - Provides action buttons (View Details, Edit, Delete) in the footer via EventCardActions component
+    - Handles navigation to event details page while updating state service with current statistics
+    - Passes through edit and delete event callbacks to parent components
+    
+    Dependencies:
+    - NavigationManager: For programmatic navigation to event details
+    - IHybridEventStateService: For maintaining registration and attendee counts across navigation
+    - EventDetails: Child component that renders event information and statistics
+    - EventCardActions: Child component that renders action buttons with callbacks
+    
+    Usage: Typically used in event listing pages to display multiple events in a grid layout.
+*@
+
+@inject NavigationManager NavigationManager
+@inject IHybridEventStateService EventState
+
+<div class="card shadow-sm h-100">
+    <div class="card-header bg-primary text-white">
+        <h5 class="card-title mb-0">@Event.Name</h5>
+    </div>
+    <div class="card-body">
+        <EventDetails Event="@Event" Statistics="@Statistics" />
+    </div>
+    <div class="card-footer text-center">
+        <EventCardActions Event="@Event" Statistics="@Statistics" DetailsPageUri="@DetailsPageUri"
+            OnNavigateToDetails="@HandleNavigateToDetails" OnEditEvent="OnEditEvent" OnDeleteEvent="OnDeleteEvent" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Event Event { get; set; } = default!;
+
+    [Parameter]
+    public string DetailsPageUri { get; set; } = "/events/details";
+
+    [Parameter]
+    public EventStatistics Statistics { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<Event> OnEditEvent { get; set; }
+
+    [Parameter]
+    public EventCallback<Event> OnDeleteEvent { get; set; }
+
+    private void HandleNavigateToDetails()
+    {
+        EventState.RegistrationCounts[Event.Id] = Statistics.RegistrationCount;
+        EventState.AttendeeCounts[Event.Id] = Statistics.AttendeeCount;
+        NavigationManager.NavigateTo($"{DetailsPageUri}/{Event.Id}");
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the component does (displays an event card)
+- **Features**: Key functionality and UI structure
+- **Dependencies**: Injected services and child components it uses
+- **Usage**: How it's typically used in the application
+
+This follows Blazor commenting conventions using `@* *@` for multi-line comments.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Components/Events/EventCardActions.razor`]EventCardActions.razor ) file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    EventCardActions Component
+    
+    Purpose: Provides action buttons for event card operations including view details, edit, and delete functionality.
+    
+    Features:
+    - View Details button (left-aligned) - navigates to event details page
+    - Edit and Delete buttons (right-aligned) - triggers parent component callbacks
+    - Bootstrap flex layout with responsive button positioning
+    - Event parameter passing to parent components through callbacks
+    - Conditional callback execution with delegate checking
+    
+    Button Layout:
+    - Left side: Primary "View Details" button with eye icon
+    - Right side: Secondary "Edit" and danger "Delete" buttons grouped together
+    
+    Dependencies:
+    - Event model for data binding
+    - EventStatistics for statistical information
+    - EventCallback delegates for parent component communication
+    
+    Usage: Embedded in EventCard component footer to provide standardized event actions.
+*@
+
+<div class="d-flex justify-content-between">
+    <button class="btn btn-primary" @onclick="OnNavigateToDetails">
+        <i class="fas fa-eye me-2"></i>
+        View Details
+    </button>
+    <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-secondary" @onclick="OnEditEventClick">Edit</button>
+        <button class="btn btn-sm btn-danger" @onclick="OnDeleteEventClick">Delete</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Event Event { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventStatistics Statistics { get; set; } = default!;
+
+    [Parameter]
+    public string DetailsPageUri { get; set; } = "/events/details";
+
+    [Parameter]
+    public EventCallback OnNavigateToDetails { get; set; }
+
+    [Parameter]
+    public EventCallback<Event> OnEditEvent { get; set; }
+
+    [Parameter]
+    public EventCallback<Event> OnDeleteEvent { get; set; }
+
+    private async Task OnEditEventClick()
+    {
+        if (OnEditEvent.HasDelegate)
+        {
+            await OnEditEvent.InvokeAsync(Event);
+        }
+    }
+
+    private async Task OnDeleteEventClick()
+    {
+        if (OnDeleteEvent.HasDelegate)
+        {
+            await OnDeleteEvent.InvokeAsync(Event);
+        }
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the component does (provides event action buttons)
+- **Features**: Key functionality including button behaviors and layout
+- **Button Layout**: Specific positioning and styling information
+- **Dependencies**: Required parameters and callback types
+- **Usage**: How it's used within the application (embedded in EventCard)
+
+This helps developers understand the component's role in the event management UI and how it integrates with parent components.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Components/Events/EventDetails.razor`]EventDetails.razor ) file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    EventDetails Component
+    
+    Purpose: Displays detailed information about a single event including date, location, registration statistics, and optional notes.
+    
+    Features:
+    - Event date display with calendar icon formatting
+    - Location information with map marker icon
+    - Registration count with user group icon
+    - Attendance count with user check icon and percentage badge
+    - Conditional notes display with sticky note icon
+    - Bootstrap icons and badges for visual enhancement
+    
+    Statistics Display:
+    - Shows total registrations and actual attendees
+    - Calculates and displays attendance rate as percentage badge
+    - Conditional rendering based on data availability
+    
+    Dependencies:
+    - Event model for core event information
+    - EventStatistics model for registration and attendance data
+    - Font Awesome icons for visual indicators
+    - Bootstrap classes for styling
+    
+    Usage: Embedded in EventCard component body to display event information in a structured format.
+*@
+
+<h6 class="card-text mb-1">
+    <i class="fas fa-calendar-alt me-2"></i>
+    Date: @Event.Date.ToLongDateString()
+</h6>
+<p class="card-text mb-1">
+    <i class="fas fa-map-marker-alt me-2"></i>
+    Location: @Event.Location
+</p>
+<p class="card-text mb-1">
+    <i class="fas fa-users me-2"></i>
+    Registered: @Statistics.RegistrationCount
+</p>
+<p class="card-text mb-1">
+    <i class="fas fa-user-check me-2"></i>
+    Attended: @Statistics.AttendeeCount
+    @if (Statistics.RegistrationCount > 0)
+    {
+        <span class="badge bg-info ms-2">@($"{Statistics.AttendanceRate:F1}%")</span>
+    }
+</p>
+@if (!string.IsNullOrWhiteSpace(Event.Notes))
+{
+    <p class="card-text text-muted mt-2">
+        <i class="fas fa-sticky-note me-2"></i>
+        @Event.Notes
+    </p>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public Event Event { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventStatistics Statistics { get; set; } = default!;
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the component displays (event details and statistics)
+- **Features**: All the information elements it renders with their icons
+- **Statistics Display**: How it handles and presents numerical data
+- **Dependencies**: Required models and external resources (icons, Bootstrap)
+- **Usage**: Where it's used in the component hierarchy
+
+This helps developers understand how this component fits into the event display system and what data it requires to function properly.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Components/Events/EventForm.razor`]EventForm.razor ) file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    EventForm Component
+    
+    Purpose: Provides a comprehensive form interface for creating and editing events with validation, 
+    state management, and user feedback capabilities.
+    
+    Features:
+    - Create new events or edit existing events
+    - Form validation with DataAnnotations and ValidationSummary
+    - Error handling and user-friendly error messages
+    - Form state management with dirty tracking and auto-save
+    - Reset form functionality to clear all fields
+    - Loading states with button disabling during submission
+    - Responsive Bootstrap layout with proper field organization
+    
+    Form Fields:
+    - Event Name (required) - Text input with placeholder
+    - Event Date (required) - Date picker input
+    - Location (required) - Text input with placeholder
+    - Notes (optional) - Multi-line textarea
+    
+    Actions:
+    - Save/Update - Validates and saves event data
+    - Reset Form - Clears all fields and resets state
+    - Cancel - Closes form without saving changes
+    
+    Dependencies:
+    - IHybridEventStateService: For form state management and persistence
+    - IEventService: For CRUD operations on events
+    - ILogger: For logging form operations and errors
+    - Event model for data binding
+    - Bootstrap classes for styling and layout
+    
+    Usage: Used in EventsPage for both creating new events and editing existing ones.
+*@
+
+@inject IHybridEventStateService EventState
+@inject IEventService EventService
+@inject ILogger<EventForm> Logger
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">@FormTitle</h5>
+    </div>
+    <div class="card-body">
+        <EditForm Model="EventState.CurrentEventForm" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+
+            @if (HasValidationErrors)
+            {
+                <div class="alert alert-danger">
+                    <ValidationSummary />
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    @ErrorMessage
+                </div>
+            }
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="name" class="form-label required">Event Name</label>
+                        <InputText id="name" class="form-control" @bind-Value="EventState.CurrentEventForm.Name"
+                            @bind-Value:after="MarkAsDirty" placeholder="Enter the event name"
+                            disabled="@IsSubmitting" />
+                        <ValidationMessage For="@(() => EventState.CurrentEventForm.Name)" />
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="date" class="form-label required">Event Date</label>
+                        <InputDate id="date" class="form-control" @bind-Value="EventState.CurrentEventForm.Date"
+                            @bind-Value:after="MarkAsDirty" disabled="@IsSubmitting" />
+                        <ValidationMessage For="@(() => EventState.CurrentEventForm.Date)" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="location" class="form-label required">Location</label>
+                <InputText id="location" class="form-control" @bind-Value="EventState.CurrentEventForm.Location"
+                    @bind-Value:after="MarkAsDirty" placeholder="Enter the event location" disabled="@IsSubmitting" />
+                <ValidationMessage For="@(() => EventState.CurrentEventForm.Location)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <InputTextArea id="notes" class="form-control" @bind-Value="EventState.CurrentEventForm.Notes"
+                    @bind-Value:after="MarkAsDirty" rows="3" placeholder="Additional notes (optional)"
+                    disabled="@IsSubmitting" />
+                <ValidationMessage For="@(() => EventState.CurrentEventForm.Notes)" />
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <div>
+                    <button type="submit" class="btn btn-success me-2" disabled="@IsSubmitting">
+                        @if (IsSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        else
+                        {
+                            <i class="fas fa-save me-2"></i>
+                        }
+                        @SaveButtonText
+                    </button>
+
+                    <button type="button" class="btn btn-warning me-2" @onclick="ResetFormAsync"
+                        disabled="@IsSubmitting">
+                        <i class="fas fa-undo me-2"></i>
+                        Reset Form
+                    </button>
+
+                    <button type="button" class="btn btn-secondary" @onclick="CancelAsync" disabled="@IsSubmitting">
+                        <i class="fas fa-times me-2"></i>
+                        Cancel
+                    </button>
+                </div>
+
+                @if (EventState.IsFormDirty)
+                {
+                    <small class="text-warning align-self-center">
+                        <i class="fas fa-exclamation-circle me-1"></i>
+                        Unsaved changes
+                    </small>
+                }
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Event Event { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<Event> OnValidSubmitCallback { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelCallback { get; set; }
+
+    [Parameter]
+    public string FormTitle { get; set; } = "Event Details";
+
+    private bool IsSubmitting { get; set; }
+    private string ErrorMessage { get; set; } = string.Empty;
+    private bool HasValidationErrors { get; set; }
+
+    private string SaveButtonText => IsEditMode ? "Update Event" : "Create Event";
+    private bool IsEditMode => Event?.Id != Guid.Empty;
+
+    protected override void OnParametersSet()
+    {
+        ErrorMessage = string.Empty;
+        HasValidationErrors = false;
+    }
+
+    private void MarkAsDirty()
+    {
+        EventState.MarkFormDirty();
+        ErrorMessage = string.Empty;
+    }
+
+    private async Task ResetFormAsync()
+    {
+        if (IsSubmitting) return;
+
+        try
+        {
+            ErrorMessage = string.Empty;
+            HasValidationErrors = false;
+
+            await EventState.ResetEventFormAsync();
+
+            await EventState.InitializeForNewEventAsync();
+
+            Event = new Event();
+
+            StateHasChanged();
+
+            Logger.LogInformation("Event form and state completely reset to new event state");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "An error occurred while resetting the form.";
+            Logger.LogError(ex, "Error resetting event form and state");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (IsSubmitting) return;
+
+        IsSubmitting = true;
+        ErrorMessage = string.Empty;
+        HasValidationErrors = false;
+
+        try
+        {
+            var eventToSave = CreateEventFromForm();
+            var savedEvent = await SaveEventAsync(eventToSave);
+
+            await EventState.ResetEventFormAsync();
+            await OnValidSubmitCallback.InvokeAsync(savedEvent);
+        }
+        catch (ValidationException ex)
+        {
+            ErrorMessage = ex.Message;
+            HasValidationErrors = true;
+            Logger.LogWarning("Validation error saving event: {Message}", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "An error occurred while saving the event. Please try again.";
+            Logger.LogError(ex, "Error saving event with ID: {EventId}", Event?.Id);
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+
+    private Event CreateEventFromForm()
+    {
+        return new Event
+        {
+            Id = EventState.CurrentEventForm.Id,
+            Name = EventState.CurrentEventForm.Name?.Trim() ?? string.Empty,
+            Date = EventState.CurrentEventForm.Date,
+            Location = EventState.CurrentEventForm.Location?.Trim() ?? string.Empty,
+            Notes = EventState.CurrentEventForm.Notes?.Trim() ?? string.Empty
+        };
+    }
+
+    private async Task<Event> SaveEventAsync(Event eventToSave)
+    {
+        if (eventToSave.Id == Guid.Empty)
+        {
+            var createdEvent = await EventService.AddAsync(eventToSave);
+            Logger.LogInformation("Created new event with ID: {EventId}", createdEvent.Id);
+            return createdEvent;
+        }
+        else
+        {
+            var updatedEvent = await EventService.UpdateAsync(eventToSave);
+            Logger.LogInformation("Updated event with ID: {EventId}", updatedEvent.Id);
+
+            var verifiedEvent = await EventService.GetByIdAsync(eventToSave.Id);
+            if (verifiedEvent == null)
+            {
+                throw new InvalidOperationException($"Event with ID {eventToSave.Id} not found after update");
+            }
+
+            return verifiedEvent;
+        }
+    }
+
+    private async Task CancelAsync()
+    {
+        if (IsSubmitting) return;
+
+        try
+        {
+            await OnCancelCallback.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during cancel operation");
+        }
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the component does (event creation/editing form)
+- **Features**: Key functionality including validation, state management, and user interactions
+- **Form Fields**: All input fields with their requirements and types
+- **Actions**: Available user actions (Save, Reset, Cancel)
+- **Dependencies**: Required services and models
+- **Usage**: Where it's used in the application
+
+This comprehensive documentation helps developers understand the form's capabilities and integration points.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Components/Shared/ModalDialog.razor`]ModalDialog.razor ) file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    ModalDialog Component
+    
+    Purpose: Provides a reusable Bootstrap modal dialog component with extensive customization options 
+    for confirmations, forms, and general content display.
+    
+    Features:
+    - Customizable modal sizes (Small, Default, Large, ExtraLarge, FullScreen)
+    - Configurable header with optional icons and custom styling
+    - Loading state support with spinner and custom loading text
+    - Footer with customizable confirm/cancel buttons or custom content
+    - Keyboard support (Escape key to close)
+    - Backdrop click handling with optional close behavior
+    - Accessibility features with proper ARIA attributes
+    - Event callbacks for show/hide/confirm/cancel actions
+    - Processing states with button loading indicators
+    
+    Modal Sizes:
+    - Small: Compact dialogs for simple confirmations
+    - Default: Standard size for most use cases
+    - Large: Extended content or forms
+    - ExtraLarge: Complex content requiring more space
+    - FullScreen: Full viewport coverage
+    
+    Customization Options:
+    - Header and footer styling classes
+    - Button text and styling customization
+    - Optional header icons
+    - Show/hide individual buttons
+    - Center vertically option
+    - Custom footer content via RenderFragment
+    
+    Dependencies:
+    - IJSRuntime: For body class manipulation and DOM interactions
+    - Bootstrap modal classes and JavaScript behaviors
+    - Font Awesome or Bootstrap icons for header icons
+    
+    Usage: Used throughout the application for confirmations, forms, help dialogs, and content display.
+*@
+
+@inject IJSRuntime JSRuntime
+
+@if (IsVisible)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-labelledby="modal-title-@_modalId"
+        aria-describedby="modal-body-@_modalId" @onkeydown="OnKeyDown" @onclick="OnBackdropClick"
+        @onclick:stopPropagation="false">
+
+        <div class="modal-dialog @SizeClass @CenterVerticallyClass" role="document" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header @HeaderClass">
+                    <h5 class="modal-title" id="modal-title-@_modalId">
+                        @if (!string.IsNullOrEmpty(HeaderIcon))
+                        {
+                            <i class="@HeaderIcon me-2"></i>
+                        }
+                        @Title
+                    </h5>
+                    @if (ShowCloseButton)
+                    {
+                        <button type="button" class="btn-close @(HeaderClass.Contains("text-white") ? "btn-close-white" : "")"
+                            @onclick="OnCancelClickedAsync" aria-label="Close"></button>
+                    }
+                </div>
+
+                <div class="modal-body" id="modal-body-@_modalId">
+                    @if (IsLoading)
+                    {
+                        <div class="text-center p-3">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 mb-0">@LoadingText</p>
+                        </div>
+                    }
+                    else
+                    {
+                        @ChildContent
+                    }
+                </div>
+
+                @if (!HideFooter && !IsLoading)
+                {
+                    <div class="modal-footer @FooterClass">
+                        @if (ShowCancelButton)
+                        {
+                            <button type="button" class="btn @CancelButtonClass" @onclick="OnCancelClickedAsync"
+                                disabled="@IsProcessing">
+                                @if (IsProcessing && ProcessingAction == "cancel")
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                @CancelText
+                            </button>
+                        }
+
+                        @if (ShowConfirmButton)
+                        {
+                            <button type="button" class="btn @ConfirmButtonClass" @onclick="OnConfirmClickedAsync"
+                                disabled="@IsProcessing">
+                                @if (IsProcessing && ProcessingAction == "confirm")
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                @ConfirmText
+                            </button>
+                        }
+
+                        @FooterContent
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Backdrop -->
+    <div class="modal-backdrop fade show" @onclick="OnBackdropClick"></div>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = "Confirm";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+
+    [Parameter] public string ConfirmText { get; set; } = "Confirm";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public bool ShowConfirmButton { get; set; } = true;
+    [Parameter] public bool ShowCancelButton { get; set; } = true;
+    [Parameter] public bool ShowCloseButton { get; set; } = true;
+
+    [Parameter] public string ConfirmButtonClass { get; set; } = "btn-primary";
+    [Parameter] public string CancelButtonClass { get; set; } = "btn-secondary";
+    [Parameter] public string HeaderClass { get; set; } = "";
+    [Parameter] public string FooterClass { get; set; } = "";
+    [Parameter] public string HeaderIcon { get; set; } = "";
+    [Parameter] public ModalSize Size { get; set; } = ModalSize.Default;
+    [Parameter] public bool CenterVertically { get; set; } = false;
+
+    [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+    [Parameter] public bool HideFooter { get; set; } = false;
+    [Parameter] public bool IsLoading { get; set; } = false;
+    [Parameter] public string LoadingText { get; set; } = "Loading...";
+
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnShow { get; set; }
+    [Parameter] public EventCallback OnHide { get; set; }
+
+    private bool IsVisible { get; set; }
+    private bool IsProcessing { get; set; }
+    private string ProcessingAction { get; set; } = "";
+    private readonly string _modalId = Guid.NewGuid().ToString("N")[..8];
+
+    public enum ModalSize
+    {
+        Small,
+        Default,
+        Large,
+        ExtraLarge,
+        FullScreen
+    }
+
+    private string SizeClass => Size switch
+    {
+        ModalSize.Small => "modal-sm",
+        ModalSize.Large => "modal-lg",
+        ModalSize.ExtraLarge => "modal-xl",
+        ModalSize.FullScreen => "modal-fullscreen",
+        _ => ""
+    };
+
+    private string CenterVerticallyClass => CenterVertically ? "modal-dialog-centered" : "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && IsVisible)
+        {
+            await JSRuntime.InvokeVoidAsync("document.body.classList.add", "modal-open");
+        }
+    }
+
+    public void Show()
+    {
+        IsVisible = true;
+        StateHasChanged();
+        _ = Task.Run(async () =>
+        {
+            await JSRuntime.InvokeVoidAsync("document.body.classList.add", "modal-open");
+            if (OnShow.HasDelegate)
+            {
+                await OnShow.InvokeAsync();
+            }
+        });
+    }
+
+    public void Hide()
+    {
+        IsVisible = false;
+        IsProcessing = false;
+        ProcessingAction = "";
+        StateHasChanged();
+        _ = Task.Run(async () =>
+        {
+            await JSRuntime.InvokeVoidAsync("document.body.classList.remove", "modal-open");
+            if (OnHide.HasDelegate)
+            {
+                await OnHide.InvokeAsync();
+            }
+        });
+    }
+
+    public async Task ShowAsync()
+    {
+        if (IsVisible) return;
+
+        IsVisible = true;
+        await JSRuntime.InvokeVoidAsync("document.body.classList.add", "modal-open");
+        StateHasChanged();
+
+        if (OnShow.HasDelegate)
+        {
+            await OnShow.InvokeAsync();
+        }
+    }
+
+    public async Task HideAsync()
+    {
+        if (!IsVisible) return;
+
+        IsVisible = false;
+        IsProcessing = false;
+        ProcessingAction = "";
+
+        await JSRuntime.InvokeVoidAsync("document.body.classList.remove", "modal-open");
+        StateHasChanged();
+
+        if (OnHide.HasDelegate)
+        {
+            await OnHide.InvokeAsync();
+        }
+    }
+
+    private async Task OnConfirmClickedAsync()
+    {
+        if (IsProcessing) return;
+
+        try
+        {
+            IsProcessing = true;
+            ProcessingAction = "confirm";
+            StateHasChanged();
+
+            if (OnConfirm.HasDelegate)
+            {
+                await OnConfirm.InvokeAsync();
+            }
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+        finally
+        {
+            if (IsVisible)
+            {
+                Hide();
+            }
+        }
+    }
+
+    private async Task OnCancelClickedAsync()
+    {
+        if (IsProcessing) return;
+
+        try
+        {
+            IsProcessing = true;
+            ProcessingAction = "cancel";
+            StateHasChanged();
+
+            if (OnCancel.HasDelegate)
+            {
+                await OnCancel.InvokeAsync();
+            }
+        }
+        finally
+        {
+            Hide();
+        }
+    }
+
+    private async Task OnBackdropClick()
+    {
+        if (CloseOnBackdropClick && !IsProcessing)
+        {
+            await OnCancelClickedAsync();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && CloseOnEscape && !IsProcessing)
+        {
+            await OnCancelClickedAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        _ = JSRuntime.InvokeVoidAsync("document.body.classList.remove", "modal-open");
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the component provides (reusable modal dialog)
+- **Features**: Key functionality including customization, keyboard support, and accessibility
+- **Modal Sizes**: Available size options and their use cases
+- **Customization Options**: All the ways developers can customize the modal
+- **Dependencies**: Required services and external dependencies
+- **Usage**: How it's used throughout the application
+
+This comprehensive documentation helps developers understand the full capabilities of this versatile modal component.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Layout/MainLayout.razor`]MainLayout.razor ) file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    MainLayout Component
+    
+    Purpose: Provides the primary layout structure for the EventEase application with sidebar navigation, 
+    main content area, header, and footer sections.
+    
+    Features:
+    - Sidebar navigation with collapsible NavMenu component
+    - Header section with application logo and title
+    - Main content area for page-specific content rendering
+    - Footer with copyright information and logo
+    - Responsive layout structure with proper spacing
+    - Consistent branding across all pages
+    
+    Layout Structure:
+    - Left sidebar: Navigation menu for app-wide navigation
+    - Top header: Application branding and title
+    - Main content: Dynamic content area where pages are rendered
+    - Bottom footer: Copyright and company information
+    
+    Dependencies:
+    - LayoutComponentBase: Base class for Blazor layout components
+    - NavMenu: Navigation component for sidebar menu
+    - Application logos: white-clear-icon-192.png and white-clear-icon-32.png
+    - CSS classes for layout styling and positioning
+    
+    Usage: Serves as the base layout for all pages in the EventEase application, automatically applied 
+    through the routing system to provide consistent navigation and branding.
+*@
+
+@inherits LayoutComponentBase
+
+<div class="page-layout">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <div class="main-content-area">
+        <div class="top-row px-4">
+            <img src="images/white-clear-icon-192.png" alt="EventEase Logo" class="logo" />
+            <h3>EventEase Events Manager Application</h3>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+
+        <footer class="app-footer">
+            <img src="images/white-clear-icon-32.png" alt="EventEase Logo" class="logo" />
+            © @DateTime.Now.Year EventEase Event Consultants — All rights reserved.
+        </footer>
+    </div>
+</div>
+````
+
+The summary comment block describes:
+- **Purpose**: What the layout provides (primary application structure)
+- **Features**: Key functionality including responsive design and branding
+- **Layout Structure**: How the page is organized (sidebar, header, content, footer)
+- **Dependencies**: Required base classes, components, and assets
+- **Usage**: How it's used in the application (automatic application to all pages)
+
+This documentation helps developers understand the overall application structure and how the layout system works in the EventEase application.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Layout/MainLayout.razor.css`]MainLayout.razor.css ) file with a summary comment block added at the top:
+
+````css
+/*
+    MainLayout Styles
+    
+    Purpose: Provides CSS styling for the MainLayout component, defining the visual layout and responsive 
+    behavior of the EventEase application's primary layout structure.
+    
+    Layout Features:
+    - Fixed sidebar with gradient background for consistent navigation
+    - Responsive main content area with proper spacing and margins
+    - Sticky top header with application branding and logo positioning
+    - Footer styling with logo and copyright information
+    - Full viewport height layout with flexible content area
+    
+    Key Components:
+    - .page-layout: Main flex container for overall layout structure
+    - .sidebar: Fixed-position navigation area with gradient background
+    - .main-content-area: Content region with left margin to accommodate sidebar
+    - .top-row: Header section with branding and logo styling
+    - .app-footer: Bottom section with company information and logo
+    
+    Responsive Design:
+    - Mobile-first approach with breakpoints at 768px
+    - Sidebar positioning adjustments for different screen sizes
+    - Logo sizing and spacing adaptations for various viewports
+    - Content padding adjustments for optimal readability
+    
+    Color Scheme:
+    - Primary gradient: #0f1681 to #444cc2 for sidebar and header
+    - White text on colored backgrounds for contrast
+    - Border colors: #dee2e6 and #d6d5d5 for subtle separation
+    
+    Usage: Automatically applied to MainLayout.razor component for consistent application-wide styling.
+*/
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+.page-layout {
+    display: flex;
+    min-height: 100vh;
+    align-items: stretch;
+    /* Makes sidebar match vertical siblings */
+}
+
+.sidebar {
+    width: 250px;
+    background-image: linear-gradient(180deg, #0f1681 0%, #444cc2 70%);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    /* Add this to ensure sidebar fills full height */
+    flex-shrink: 0;
+    position: fixed;
+    /* Change from sticky to fixed */
+    z-index: 1000;
+    /* Add z-index to ensure sidebar stays on top */
+    top: 0;
+    /* Stick to top */
+}
+
+/* Add these rules after your existing sidebar styles */
+.sidebar .nav-scrollable {
+    /* position: sticky; */
+    top: 3.5rem;
+    /* Account for top-row height */
+    height: calc(100vh - 3.5rem);
+    overflow-y: auto;
+    flex: 1;
+}
+
+.sidebar .nav {
+    padding-top: 1rem;
+}
+
+.sidebar .nav-link {
+    position: relative;
+    z-index: 1;
+}
+
+.main-content-area {
+    margin-left: 250px;
+    /* Add left margin to account for fixed sidebar */
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 100vh;
+}
+
+.content {
+    flex: 1;
+    padding-bottom: 1rem;
+}
+
+.app-footer {
+    padding: 1rem;
+    background-color: #444cc2;
+    border-top: 1px solid #dee2e6;
+    text-align: center;
+    color: #fff;
+}
+
+.app-footer .logo {
+    height: 32px;
+    /* Adjust size as needed */
+    width: auto;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.top-row {
+    background-image: linear-gradient(90deg, #0f1681 0%, #444cc2 70%);
+    color: #fff;
+    border-bottom: 1px solid #d6d5d5;
+    justify-content: center;
+    height: 5rem;
+    display: flex;
+    align-items: center;
+}
+
+.top-row .logo {
+    width: 5rem;
+    height: 5rem;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+.top-row ::deep a,
+.top-row ::deep .btn-link {
+    white-space: nowrap;
+    margin-left: 1.5rem;
+    text-decoration: none;
+}
+
+.top-row ::deep a:hover,
+.top-row ::deep .btn-link:hover {
+    text-decoration: underline;
+}
+
+.top-row ::deep a:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 767px) {
+    .top-row {
+        justify-content: space-between;
+    }
+
+    .top-row ::deep a,
+    .top-row ::deep .btn-link {
+        margin-left: 0;
+    }
+}
+
+@media (min-width: 768px) {
+    .page {
+        flex-direction: row;
+    }
+
+    .sidebar {
+        width: 250px;
+        min-height: 100vh;
+        position: fixed;
+        /* Change from sticky to fixed */
+        top: 0;
+    }
+
+    .top-row {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .top-row.auth ::deep a:first-child {
+        flex: 1;
+        text-align: right;
+        width: 0;
+    }
+
+    .top-row,
+    article {
+        padding-left: 2rem !important;
+        padding-right: 1.5rem !important;
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the CSS file accomplishes (styling for MainLayout)
+- **Layout Features**: Key visual and structural elements
+- **Key Components**: Major CSS classes and their roles
+- **Responsive Design**: How the layout adapts to different screen sizes
+- **Color Scheme**: The specific colors and gradients used
+- **Usage**: How it's applied in the application
+
+This documentation helps developers understand the styling structure and how the visual layout works in the EventEase application.
+
+Similar code found with 2 license types
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the MainLayout.razor.css file with a summary comment block added at the top:
+
+````css
+/*
+    MainLayout Styles
+    
+    Purpose: Provides CSS styling for the MainLayout component, defining the visual layout and responsive 
+    behavior of the EventEase application's primary layout structure.
+    
+    Layout Features:
+    - Fixed sidebar with gradient background for consistent navigation
+    - Responsive main content area with proper spacing and margins
+    - Sticky top header with application branding and logo positioning
+    - Footer styling with logo and copyright information
+    - Full viewport height layout with flexible content area
+    
+    Key Components:
+    - .page-layout: Main flex container for overall layout structure
+    - .sidebar: Fixed-position navigation area with gradient background
+    - .main-content-area: Content region with left margin to accommodate sidebar
+    - .top-row: Header section with branding and logo styling
+    - .app-footer: Bottom section with company information and logo
+    
+    Responsive Design:
+    - Mobile-first approach with breakpoints at 768px
+    - Sidebar positioning adjustments for different screen sizes
+    - Logo sizing and spacing adaptations for various viewports
+    - Content padding adjustments for optimal readability
+    
+    Color Scheme:
+    - Primary gradient: #0f1681 to #444cc2 for sidebar and header
+    - White text on colored backgrounds for contrast
+    - Border colors: #dee2e6 and #d6d5d5 for subtle separation
+    
+    Usage: Automatically applied to MainLayout.razor component for consistent application-wide styling.
+*/
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+.page-layout {
+    display: flex;
+    min-height: 100vh;
+    align-items: stretch;
+}
+
+.sidebar {
+    width: 250px;
+    background-image: linear-gradient(180deg, #0f1681 0%, #444cc2 70%);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    flex-shrink: 0;
+    position: fixed;
+    z-index: 1000;
+    top: 0;
+}
+
+.sidebar .nav-scrollable {
+    top: 3.5rem;
+    height: calc(100vh - 3.5rem);
+    overflow-y: auto;
+    flex: 1;
+}
+
+.sidebar .nav {
+    padding-top: 1rem;
+}
+
+.sidebar .nav-link {
+    position: relative;
+    z-index: 1;
+}
+
+.main-content-area {
+    margin-left: 250px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 100vh;
+}
+
+.content {
+    flex: 1;
+    padding-bottom: 1rem;
+}
+
+.app-footer {
+    padding: 1rem;
+    background-color: #444cc2;
+    border-top: 1px solid #dee2e6;
+    text-align: center;
+    color: #fff;
+}
+
+.app-footer .logo {
+    height: 32px;
+    width: auto;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.top-row {
+    background-image: linear-gradient(90deg, #0f1681 0%, #444cc2 70%);
+    color: #fff;
+    border-bottom: 1px solid #d6d5d5;
+    justify-content: center;
+    height: 5rem;
+    display: flex;
+    align-items: center;
+}
+
+.top-row .logo {
+    width: 5rem;
+    height: 5rem;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+.top-row ::deep a,
+.top-row ::deep .btn-link {
+    white-space: nowrap;
+    margin-left: 1.5rem;
+    text-decoration: none;
+}
+
+.top-row ::deep a:hover,
+.top-row ::deep .btn-link:hover {
+    text-decoration: underline;
+}
+
+.top-row ::deep a:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 767px) {
+    .top-row {
+        justify-content: space-between;
+    }
+
+    .top-row ::deep a,
+    .top-row ::deep .btn-link {
+        margin-left: 0;
+    }
+}
+
+@media (min-width: 768px) {
+    .page {
+        flex-direction: row;
+    }
+
+    .sidebar {
+        width: 250px;
+        min-height: 100vh;
+        position: fixed;
+        top: 0;
+    }
+
+    .top-row {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .top-row.auth ::deep a:first-child {
+        flex: 1;
+        text-align: right;
+        width: 0;
+    }
+
+    .top-row,
+    article {
+        padding-left: 2rem !important;
+        padding-right: 1.5rem !important;
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the CSS file accomplishes (styling for MainLayout)
+- **Layout Features**: Key visual and structural elements
+- **Key Components**: Major CSS classes and their roles
+- **Responsive Design**: How the layout adapts to different screen sizes
+- **Color Scheme**: The specific colors and gradients used
+- **Usage**: How it's applied in the application
+
+This documentation helps developers understand the styling structure and visual design system of the EventEase application.
+
+Similar code found with 2 license types
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the NavMenu.razor file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    NavMenu Component
+    
+    Purpose: Provides the primary navigation menu for the EventEase application with responsive 
+    collapsible sidebar navigation and application branding.
+    
+    Features:
+    - Responsive navigation with collapsible mobile menu
+    - Application branding with logo and title in header
+    - Navigation links to all major application sections
+    - Bootstrap Icons for visual navigation indicators
+    - Active link highlighting with NavLink components
+    - Mobile-friendly hamburger menu toggle
+    - Consistent styling with application color scheme
+    
+    Navigation Structure:
+    - Home: Landing page and dashboard
+    - Events List: Event management and listing page
+    - Attendance: Attendance tracking and reporting
+    - User Manual: Application help and documentation
+    - About: Application information and company details
+    
+    Interactive Elements:
+    - Collapsible menu for mobile responsiveness
+    - Navbar toggler button for menu visibility
+    - Active state indication for current page
+    - Click-to-close behavior on mobile devices
+    
+    Dependencies:
+    - Bootstrap classes for responsive navigation styling
+    - Bootstrap Icons for navigation item indicators
+    - NavLink component for routing and active state management
+    - Application logo: white-clear-icon-32.png
+    
+    Usage: Embedded in MainLayout sidebar to provide consistent navigation across all application pages.
+*@
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="">
+            <img src="images/white-clear-icon-32.png" alt="EventEase Logo" class="logo me-2" />
+            <span>Events Manager</span>
+        </a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/events">
+                <span class="bi bi-calendar2-event-fill-nav-menu" aria-hidden="true"></span> Events List
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/attendance">
+                <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Attendance
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/user-manual">
+                <span class="bi bi-file-earmark-person-fill-nav-menu" aria-hidden="true"></span> User Manual
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/about">
+                <span class="bi bi-info-circle-fill-nav-menu" aria-hidden="true"></span> About
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the component provides (primary navigation with responsive design)
+- **Features**: Key functionality including responsiveness, branding, and navigation
+- **Navigation Structure**: All the available navigation destinations and their purposes
+- **Interactive Elements**: User interaction features like collapsible menu and active states
+- **Dependencies**: Required external resources and components
+- **Usage**: How it integrates with the overall application layout
+
+This documentation helps developers understand the navigation system and how it provides consistent user experience across the EventEase application.
+
+Similar code found with 3 license types
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the NavMenu.razor.css file with a summary comment block added at the top:
+
+````css
+/*
+    NavMenu Styles
+    
+    Purpose: Provides CSS styling for the NavMenu component, defining the visual appearance and 
+    responsive behavior of the sidebar navigation menu in the EventEase application.
+    
+    Key Features:
+    - Responsive navigation with mobile-first design approach
+    - Custom Bootstrap icon styling with embedded SVG backgrounds
+    - Navigation brand styling with logo integration
+    - Active state highlighting for current page indication
+    - Hover effects for improved user interaction feedback
+    - Mobile hamburger menu toggle styling
+    
+    Icon System:
+    - Custom Bootstrap Icons using data URI encoded SVGs
+    - White-filled icons for consistent navigation theming
+    - Specific icons for each navigation section:
+      * Home: House door icon
+      * Events: Calendar event icon
+      * Attendance: People group icon
+      * User Manual: File person icon
+      * About: Info circle icon
+    
+    Responsive Breakpoints:
+    - Mobile (max-width: 767px): Smaller branding, visible hamburger menu
+    - Desktop (min-width: 768px): Hidden hamburger, scrollable navigation area
+    
+    Color Scheme:
+    - Navigation links: Light gray (#d7d7d7) with white on hover/active
+    - Active background: Semi-transparent white (rgba(255, 255, 255, 0.37))
+    - Hover background: Semi-transparent white (rgba(255, 255, 255, 0.1))
+    - Navbar toggler: Semi-transparent white background
+    
+    Layout Structure:
+    - Top row: Brand logo and title with hamburger toggle
+    - Navigation items: Consistent spacing and alignment with icons
+    - Scrollable area: Responsive height calculation for content overflow
+    
+    Usage: Automatically applied to NavMenu.razor component for consistent navigation styling.
+*/
+
+.navbar-toggler {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.top-row {
+    min-height: 3.5rem;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.navbar-brand {
+    font-size: 1.1rem;
+    color: white;
+}
+
+.navbar-brand .logo {
+    height: 32px;
+    width: auto;
+    margin-right: 8px;
+}
+
+.bi {
+    display: inline-block;
+    position: relative;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-right: 0.75rem;
+    top: -1px;
+    background-size: cover;
+}
+
+.bi-house-door-fill-nav-menu {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-house-door-fill' viewBox='0 0 16 16'%3E%3Cpath d='M6.5 14.5v-3.505c0-.245.25-.495.5-.495h2c.25 0 .5.25.5.5v3.5a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5Z'/%3E%3C/svg%3E");
+}
+
+.bi-plus-square-fill-nav-menu {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-plus-square-fill' viewBox='0 0 16 16'%3E%3Cpath d='M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0z'/%3E%3C/svg%3E");
+}
+
+.bi-list-nested-nav-menu {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-list-nested' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M4.5 11.5A.5.5 0 0 1 5 11h10a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zm-2-4A.5.5 0 0 1 3 7h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm-2-4A.5.5 0 0 1 1 3h10a.5.5 0 0 1 0 1H1a.5.5 0 0 1-.5-.5z'/%3E%3C/svg%3E");
+}
+
+.bi-info-circle-fill-nav-menu {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-info-circle-fill' viewBox='0 0 16 16'%3E%3Cpath d='M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2'/%3E%3C/svg%3E");
+}
+
+.bi-calendar2-event-fill-nav-menu {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-calendar2-event-fill' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5m9.954 3H2.545c-.3 0-.545.224-.545.5v1c0 .276.244.5.545.5h10.91c.3 0 .545-.224.545-.5v-1c0-.276-.244-.5-.546-.5M11.5 7a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5z'/%3E%3C/svg%3E");
+}
+
+.bi-people-fill-nav-menu {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-people-fill' viewBox='0 0 16 16'%3E%3Cpath d='M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.24 2.24 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.3 6.3 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5'/%3E%3C/svg%3E");
+}
+
+.bi-file-earmark-person-fill-nav-menu {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-file-earmark-person-fill' viewBox='0 0 16 16'%3E%3Cpath d='M14 4.5V14a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h8.5a.5.5 0 0 1 .354.146l3.5 3.5A.5.5 0 0 1 14 4.5m-1-1L10.5.5H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V4.5zM8.5 7a3.5 3.5 0 1 1-7 .001A3.5 3.5 0 0 1 8.5 7m-.001-1A4.501 4.501 0 0 0 .0019.9999h7A4.5019,4.5019,0,0,0,8.4999,6Z'/%3E%3C/svg%3E");
+}
+
+.nav-item {
+    font-size: 0.9rem;
+    padding-bottom: 0.5rem;
+}
+
+.nav-item:first-of-type {
+    padding-top: 1rem;
+}
+
+.nav-item:last-of-type {
+    padding-bottom: 1rem;
+}
+
+.nav-item ::deep a {
+    color: #d7d7d7;
+    border-radius: 4px;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    line-height: 3rem;
+}
+
+.nav-item ::deep a.active {
+    background-color: rgba(255, 255, 255, 0.37);
+    color: white;
+}
+
+.nav-item ::deep a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+@media (min-width: 768px) {
+    .navbar-toggler {
+        display: none;
+    }
+
+    .collapse {
+        display: block;
+    }
+
+    .nav-scrollable {
+        height: calc(100vh - 3.5rem);
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 767px) {
+    .navbar-brand {
+        font-size: 1rem;
+    }
+
+    .navbar-brand .logo {
+        height: 24px;
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the CSS file accomplishes (NavMenu styling)
+- **Key Features**: Important visual and interactive elements
+- **Icon System**: How the custom Bootstrap icons are implemented
+- **Responsive Breakpoints**: Different behaviors at various screen sizes
+- **Color Scheme**: Specific colors and transparency values used
+- **Layout Structure**: How the navigation elements are organized
+- **Usage**: How it integrates with the NavMenu component
+
+This documentation helps developers understand the navigation styling system and how the visual design supports the user experience in the EventEase application.
+
+Similar code found with 2 license types
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the DateGreaterThanValidation.cs file with a summary comment block added at the top:
+
+````csharp
+/*
+    DateGreaterThanValidation Custom Validation Attribute
+    
+    Purpose: Provides custom validation logic to ensure event dates are not set in the past,
+    enforcing business rules for event scheduling in the EventEase application.
+    
+    Validation Rules:
+    - New events: Date must be today or in the future
+    - Existing events: Date validation is bypassed (allows editing of past events)
+    - Empty/null dates: Validation passes (handled by Required attribute separately)
+    - Invalid date formats: Returns descriptive error message
+    
+    Business Logic:
+    - Prevents creation of events with past dates
+    - Allows editing of existing events regardless of date (preserves historical data)
+    - Uses DateTime.Today as the minimum acceptable date for new events
+    - Provides user-friendly error messages for validation failures
+    
+    Implementation Details:
+    - Inherits from ValidationAttribute for integration with DataAnnotations
+    - Uses ValidationContext to access the Event object being validated
+    - Checks Event.Id to distinguish between new (Guid.Empty) and existing events
+    - Handles string-to-DateTime conversion with error handling
+    
+    Usage: Applied as a data annotation to Event.Date property to enforce date constraints
+    during form validation in event creation and editing scenarios.
+*/
+
+using System;
+using System.ComponentModel.DataAnnotations;
+using BlazorFinalProject.Models;
+
+public class DateGreaterThanValidation : ValidationAttribute
+{
+    public const string MINIMUM_EVENT_DATE = "The event date must not be earlier than today";
+
+    protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
+    {
+        var valueString = value != null ? value.ToString() : null;
+
+        if (string.IsNullOrWhiteSpace(valueString))
+        {
+            return ValidationResult.Success;
+        }
+
+        if (!DateTime.TryParse(valueString, out DateTime eventDate))
+        {
+            return new ValidationResult("Unable to convert the event date to a valid date");
+        }
+
+        var eventObj = validationContext.ObjectInstance as Event;
+
+        if (eventObj != null && eventObj.Id != Guid.Empty)
+        {
+            return ValidationResult.Success;
+        }
+
+        DateTime minEventDate = DateTime.Today;
+
+        if (eventDate < minEventDate)
+        {
+            return new ValidationResult(MINIMUM_EVENT_DATE);
+        }
+
+        return ValidationResult.Success;
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the validation attribute accomplishes (preventing past event dates)
+- **Validation Rules**: Specific rules for different scenarios (new vs existing events)
+- **Business Logic**: The reasoning behind the validation behavior
+- **Implementation Details**: How the validation works technically
+- **Usage**: Where and how this attribute is applied in the application
+
+This documentation helps developers understand the custom validation logic and its role in maintaining data integrity for event scheduling.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the Event.cs file with a summary comment block added at the top:
+
+````csharp
+/*
+    Event Model Class
+    
+    Purpose: Represents an event entity in the EventEase application with comprehensive data validation 
+    and business rules for event management and scheduling.
+    
+    Properties:
+    - Id: Unique identifier for the event (Guid)
+    - Name: Event title with required validation and 100-character limit
+    - Date: Event date with required validation and custom date constraint
+    - Location: Event venue with required validation and 200-character limit
+    - Notes: Optional additional information with 500-character limit
+    
+    Validation Rules:
+    - Name: Required field with descriptive error message and length constraint
+    - Date: Required, must be today or future date for new events (DateGreaterThanValidation)
+    - Location: Required field with descriptive error message and length constraint
+    - Notes: Optional field with maximum length constraint for data integrity
+    
+    Business Logic:
+    - Default date set to today for new event creation
+    - Custom validation prevents scheduling events in the past
+    - String length limits ensure database compatibility and UI consistency
+    - Empty string defaults prevent null reference issues
+    
+    Data Annotations:
+    - Required: Enforces mandatory field validation
+    - StringLength: Prevents data truncation and ensures consistent UI display
+    - DataType.Date: Provides proper date picker rendering in forms
+    - DateGreaterThanValidation: Custom attribute for business rule enforcement
+    
+    Usage: Core entity for event creation, editing, and display throughout the EventEase application.
+    Used in forms, listings, details views, and data persistence operations.
+*/
+
+using System.ComponentModel.DataAnnotations;
+
+namespace BlazorFinalProject.Models
+{
+    public class Event
+    {
+        public Guid Id { get; set; }
+
+        [Required(ErrorMessage = "Please enter an event name.")]
+        [StringLength(100)]
+        public string Name { get; set; } = string.Empty;
+
+        [DataType(DataType.Date), Required, DateGreaterThanValidation]
+        public DateTime Date { get; set; } = DateTime.Today;
+
+        [Required(ErrorMessage = "Please enter an event location.")]
+        [StringLength(200)]
+        public string Location { get; set; } = string.Empty;
+
+        [StringLength(500)]
+        public string Notes { get; set; } = string.Empty;
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the model represents in the application
+- **Properties**: Each property with its data type and constraints
+- **Validation Rules**: Specific validation applied to each field
+- **Business Logic**: Default values and business rule enforcement
+- **Data Annotations**: How validation attributes are used
+- **Usage**: Where and how this model is used throughout the application
+
+This documentation helps developers understand the Event model's role in the application and its validation requirements.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the EventStatistics.cs file with a summary comment block added at the top:
+
+````csharp
+/*
+    EventStatistics Model Class
+    
+    Purpose: Provides statistical data and calculations for event attendance and registration metrics
+    in the EventEase application.
+    
+    Properties:
+    - RegistrationCount: Total number of people registered for an event
+    - AttendeeCount: Number of registered people who actually attended the event
+    - AttendanceRate: Calculated percentage of registrants who attended (read-only)
+    
+    Calculations:
+    - AttendanceRate: Automatically calculated as (AttendeeCount / RegistrationCount) * 100
+    - Division by zero protection: Returns 0% when no registrations exist
+    - Percentage format: Returns decimal value that can be formatted as percentage in UI
+    
+    Business Logic:
+    - Tracks event participation effectiveness through attendance rates
+    - Provides insights for event planning and capacity management
+    - Supports reporting and analytics features
+    - Helps identify popular events and attendance patterns
+    
+    Usage: Used in event cards, details views, and reporting components to display
+    registration and attendance metrics. Calculated values update automatically
+    when RegistrationCount or AttendeeCount properties change.
+*/
+
+namespace BlazorFinalProject.Models
+{
+    public class EventStatistics
+    {
+        public int RegistrationCount { get; set; }
+        public int AttendeeCount { get; set; }
+        public double AttendanceRate => RegistrationCount > 0 ? (double)AttendeeCount / RegistrationCount * 100 : 0;
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the model provides (statistical data and calculations)
+- **Properties**: Each property with its meaning and behavior
+- **Calculations**: How the AttendanceRate is computed with safety measures
+- **Business Logic**: Why these statistics are important for the application
+- **Usage**: Where and how this model is used in the UI and reporting
+
+This documentation helps developers understand the role of event statistics in tracking and displaying event performance metrics.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the PagedResult.cs file with a summary comment block added at the top:
+
+````csharp
+/*
+    PagedResult<T> Generic Model Class
+    
+    Purpose: Provides a generic container for paginated data results with navigation metadata
+    and helper methods for implementing pagination in the EventEase application.
+    
+    Properties:
+    - Items: The current page of data items (List<T>)
+    - TotalCount: Total number of items across all pages
+    - PageNumber: Current page number (1-based)
+    - PageSize: Number of items per page
+    - TotalPages: Calculated total number of pages (read-only)
+    - HasNextPage: Boolean indicating if next page exists (read-only)
+    - HasPreviousPage: Boolean indicating if previous page exists (read-only)
+    
+    Factory Methods:
+    - CreateAsync<TKey>: Creates paginated result with optional ordering and cancellation support
+    - CreatePagesAsync: Simplified version with string-based ordering
+    - Both methods support async operations for consistency with data access patterns
+    
+    Pagination Logic:
+    - Uses Skip/Take LINQ methods for efficient data slicing
+    - Supports optional ordering via Func<T, TKey> delegates
+    - Calculates navigation properties automatically
+    - Handles edge cases (empty data, single page, etc.)
+    
+    Performance Features:
+    - Deferred execution with LINQ for memory efficiency
+    - Optional cancellation token support for long-running operations
+    - Generic design allows reuse across different entity types
+    
+    Usage: Used throughout the application for paginating lists of events, registrations,
+    and other collections in UI components like EventsPage and data grids.
+*/
+
+namespace BlazorFinalProject.Models;
+
+public class PagedResult<T>
+{
+    public List<T> Items { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    public bool HasNextPage => PageNumber < TotalPages;
+    public bool HasPreviousPage => PageNumber > 1;
+
+    public static async Task<PagedResult<T>> CreateAsync<TKey>(
+        IEnumerable<T> source,
+        int pageNumber,
+        int pageSize,
+        Func<T, TKey>? orderBy = null)
+    {
+        await Task.CompletedTask;
+
+        var totalCount = source.Count();
+
+        var orderedSource = orderBy != null ? source.OrderBy(orderBy) : source;
+
+        var items = orderedSource
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new PagedResult<T>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        };
+    }
+
+    public static async Task<PagedResult<T>> CreatePagesAsync(
+        IEnumerable<T> source,
+        int pageNumber,
+        int pageSize,
+        Func<T, string>? orderBy = null)
+    {
+        return await CreateAsync(source, pageNumber, pageSize, orderBy);
+    }
+
+    public static async Task<PagedResult<T>> CreateAsync<TKey>(
+        IEnumerable<T> source,
+        int pageNumber,
+        int pageSize,
+        Func<T, TKey>? orderBy = null,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await Task.CompletedTask;
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var totalCount = source.Count();
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var orderedSource = orderBy != null ? source.OrderBy(orderBy) : source;
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var items = orderedSource
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new PagedResult<T>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        };
+    }
+
+    public static async Task<PagedResult<T>> CreatePagesAsync(
+        IEnumerable<T> source,
+        int pageNumber,
+        int pageSize,
+        Func<T, string>? orderBy = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await CreateAsync(source, pageNumber, pageSize, orderBy, cancellationToken);
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the class provides (pagination container with metadata)
+- **Properties**: Each property with its role in pagination
+- **Factory Methods**: Available creation methods with their parameters
+- **Pagination Logic**: How the data slicing and navigation work
+- **Performance Features**: Efficiency considerations and cancellation support
+- **Usage**: Where and how this class is used in the application
+
+This documentation helps developers understand the pagination system and how to use it effectively across different parts of the EventEase application.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the Registration.cs file with a summary comment block added at the top:
+
+````csharp
+/*
+    Registration Model Class
+    
+    Purpose: Represents an event registration entity in the EventEase application with comprehensive 
+    data validation for attendee information and event participation tracking.
+    
+    Properties:
+    - Id: Unique identifier for the registration (Guid)
+    - EventId: Foreign key linking registration to specific event (required)
+    - AttendeeName: Full name of the person registering (required, 100-character limit)
+    - Telephone: Contact phone number with specific format validation (required)
+    - EmailAddress: Valid email address for communication (required, 254-character limit)
+    - Notes: Optional additional information (500-character limit)
+    - AttendedEvent: Boolean flag tracking actual attendance (defaults to false)
+    
+    Validation Rules:
+    - AttendeeName: Required field with descriptive error message and length constraint
+    - Telephone: Required with regex pattern validation (format: ###-###-####)
+    - EmailAddress: Required with built-in email format validation
+    - Notes: Optional field with maximum length constraint
+    - EventId: Required to ensure registration is linked to an event
+    
+    Business Logic:
+    - AttendedEvent defaults to false (attendance marked separately from registration)
+    - Phone number format enforces North American numbering plan structure
+    - Email length follows RFC 5321 specification (254 characters maximum)
+    - String length limits ensure database compatibility and UI consistency
+    
+    Data Annotations:
+    - Required: Enforces mandatory field validation with custom error messages
+    - StringLength: Prevents data truncation and ensures consistent display
+    - RegularExpression: Enforces telephone number format validation
+    - EmailAddress: Provides built-in email format validation
+    
+    Usage: Core entity for event registration management, used in registration forms,
+    attendee lists, attendance tracking, and reporting throughout the EventEase application.
+*/
+
+using System.ComponentModel.DataAnnotations;
+
+namespace BlazorFinalProject.Models
+{
+    public class Registration
+    {
+        public Guid Id { get; set; }
+
+        [Required]
+        public Guid EventId { get; set; }
+
+        [Required(ErrorMessage = "Please enter a name.")]
+        [StringLength(100)]
+        public string AttendeeName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please enter a telephone number.")]
+        [RegularExpression(@"^[1-9][0-9]{2}-[1-9]{3}-[0-9]{4}$", ErrorMessage = "Invalid telephone number.")]
+        [StringLength(12)]
+        public string Telephone { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please enter a valid email address.")]
+        [EmailAddress]
+        [StringLength(254)]
+        public string EmailAddress { get; set; } = string.Empty;
+
+        [StringLength(500)]
+        public string Notes { get; set; } = string.Empty;
+
+        public bool AttendedEvent { get; set; } = false;
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the model represents (event registration with validation)
+- **Properties**: Each property with its data type, constraints, and purpose
+- **Validation Rules**: Specific validation applied to each field
+- **Business Logic**: Default values and business rule rationale
+- **Data Annotations**: How validation attributes enforce data integrity
+- **Usage**: Where and how this model is used throughout the application
+
+This documentation helps developers understand the Registration model's role in event management and its comprehensive validation requirements.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Pages/Events/EventDetailsPage.razor`]EventDetailsPage.razor ) file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    EventDetailsPage Component
+    
+    Purpose: Provides a comprehensive view of a single event with detailed information, registration 
+    management, and attendee tracking capabilities in the EventEase application.
+    
+    Features:
+    - Event information display with name, date, location, and notes
+    - Registration form for adding new participants to the event
+    - Paginated list of event registrations with load-more functionality
+    - Registration editing and deletion capabilities via RegistrationCard components
+    - Attendance tracking with counts of registered vs actual attendees
+    - Real-time statistics updates for registration and attendance metrics
+    - Help dialog with detailed usage instructions
+    - Navigation links back to events list and attendance pages
+    
+    Route Parameters:
+    - EventId (Guid): Required route parameter identifying the specific event to display
+    
+    Data Management:
+    - Loads event details and registrations on initialization
+    - Implements pagination for registration lists (4 items per page default)
+    - Preserves pagination state during updates and refreshes
+    - Syncs statistics with EventState service for cross-component consistency
+    - Handles registration form state through HybridRegistrationStateService
+    
+    User Interactions:
+    - Register for Event: Shows registration form for new participants
+    - Edit/Delete Registrations: Delegated to RegistrationCard components
+    - Load More: Expands registration list with additional pages
+    - Help System: Contextual help dialog with feature explanations
+    - Navigation: Links to related pages (events list, attendance)
+    
+    State Management:
+    - Tracks current page size and pagination state per event
+    - Manages form visibility and submission states
+    - Coordinates with state services for data consistency
+    - Handles loading states and error conditions
+    
+    Dependencies:
+    - IEventService: Event data retrieval
+    - IRegistrationService: Registration CRUD operations
+    - IHybridEventStateService: Event state management
+    - IHybridRegistrationStateService: Registration form state
+    - IJSRuntime: Scroll management and DOM interactions
+    - RegistrationForm: New registration creation
+    - RegistrationCard: Individual registration display and editing
+    - ModalDialog: Help dialog display
+    
+    Usage: Accessed via route `/events/details/{EventId:guid}` to view and manage specific event details
+    and registrations. Central hub for event-specific operations and participant management.
+*@
+
+@page "/events/details/{EventId:guid}"
+@inject IEventService EventService
+@inject IHybridEventStateService EventState
+@inject IRegistrationService RegistrationService
+@inject IHybridRegistrationStateService RegistrationState
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Event Details | Events Manager</PageTitle>
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h1 class="mb-2">
+            <i class="bi bi-calendar2-event me-2"></i>Event Details
+        </h1>
+        <a class="btn btn-secondary btn-sm mt-2" href="/events">Back to Events</a>
+        <a class="btn btn-secondary btn-sm mt-2" href="/attendance">Go to Attendance</a>
+    </div>
+    <button class="btn btn-outline-dark btn-sm" @onclick="ShowHelp">
+        <i class="bi bi-question-circle me-1"></i>Help
+    </button>
+</div>
+
+@* ... rest of the component ... *@
+````
+
+The summary comment block describes:
+- **Purpose**: What the page provides (comprehensive event view with registration management)
+- **Features**: Key functionality including event display, registration management, and statistics
+- **Route Parameters**: Required parameters for navigation
+- **Data Management**: How data is loaded, paginated, and synchronized
+- **User Interactions**: Available user actions and their behaviors
+- **State Management**: How component state is handled and coordinated
+- **Dependencies**: Required services and components
+- **Usage**: How the page is accessed and its role in the application
+
+This documentation helps developers understand the EventDetailsPage's central role in event management and its complex interactions with various services and components.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Pages/Events/EventsPage.razor`]EventsPage.razor ) file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    EventsPage Component
+    
+    Purpose: Provides the main event management interface for the EventEase application with comprehensive 
+    event listing, creation, editing, and deletion capabilities.
+    
+    Features:
+    - Paginated event listing with load-more functionality (4 events per page default)
+    - Event creation and editing through integrated EventForm component
+    - Event deletion with detailed confirmation dialogs showing impact
+    - Real-time statistics display for registrations and attendance per event
+    - Sample data loading for testing and demonstration purposes
+    - Comprehensive help system with detailed feature explanations
+    - Error handling with user-friendly messages and recovery options
+    - Navigation links to related pages (attendance tracking)
+    
+    Route:
+    - /events: Main events listing page
+    - /events?action=add: Auto-opens event creation form
+    
+    Data Management:
+    - Implements progressive loading with pagination state preservation
+    - Syncs with EventState service for cross-component data consistency
+    - Handles cancellation tokens for async operations
+    - Maintains registration and attendance counts per event
+    - Supports bulk operations (sample data loading)
+    
+    User Interactions:
+    - Add New Event: Opens EventForm for creating new events
+    - Edit Event: Delegates to EventForm with pre-populated data
+    - Delete Event: Shows detailed confirmation with impact analysis
+    - Load More Events: Expands list with additional pages
+    - Load Sample Data: Populates application with test data
+    - Help System: Contextual help with feature descriptions
+    
+    State Management:
+    - Tracks pagination state and current page size
+    - Manages form visibility and selected event state
+    - Coordinates with HybridEventStateService for form state
+    - Preserves user position during data refreshes
+    - Handles loading states and error conditions
+    
+    Error Handling:
+    - Operation-specific error messages for different failure scenarios
+    - Graceful degradation with retry mechanisms
+    - User-friendly error display with dismissible alerts
+    - Logging integration for debugging and monitoring
+    
+    Dependencies:
+    - IEventService: Event CRUD operations
+    - IRegistrationService: Registration data for statistics
+    - IMockDataService: Sample data generation
+    - IHybridEventStateService: Event state management
+    - NavigationManager: URL handling and routing
+    - EventForm: Event creation and editing interface
+    - EventCard: Individual event display and actions
+    - ModalDialog: Confirmations and help display
+    
+    Usage: Main entry point for event management accessed via navigation menu.
+    Central hub for all event-related operations in the EventEase application.
+*@
+
+@page "/events"
+@inject IEventService EventService
+@inject IRegistrationService RegistrationService
+@inject IMockDataService MockDataService
+@inject IHybridEventStateService EventState
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject ILogger<EventsPage> Logger
+
+<PageTitle>Events List | Events Manager</PageTitle>
+
+@* ... rest of the component ... *@
+````
+
+The summary comment block describes:
+- **Purpose**: What the page accomplishes (main event management interface)
+- **Features**: Key functionality including pagination, CRUD operations, and help system
+- **Route**: Available routes and their behaviors
+- **Data Management**: How data is loaded, paginated, and synchronized
+- **User Interactions**: All available user actions and their outcomes
+- **State Management**: How component state is handled and preserved
+- **Error Handling**: Comprehensive error management approach
+- **Dependencies**: Required services and components
+- **Usage**: The page's role as the central event management hub
+
+This documentation helps developers understand the EventsPage's comprehensive role in the application and its complex data management and user interaction patterns.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Pages/Attendance/Attendance.razor`]Attendance.razor ) file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    Attendance Page Component
+    
+    Purpose: Provides a comprehensive attendance overview and reporting interface for all events
+    in the EventEase application with detailed statistics and analytics.
+    
+    Features:
+    - Tabular display of all events with attendance metrics
+    - Registration count tracking per event
+    - Actual attendance count tracking per event
+    - Color-coded attendance rate badges (Green ≥80%, Yellow ≥60%, Red <60%)
+    - Summary statistics showing totals across all events
+    - Overall attendance rate calculation
+    - Navigation links to individual event details
+    - Help dialog with detailed feature explanations
+    - Responsive table design for mobile and desktop viewing
+    
+    Data Display:
+    - Event name, date, and location for context
+    - Registration counts with info badges
+    - Attendance counts with success badges
+    - Attendance rates with color-coded performance indicators
+    - Summary panel with aggregate statistics
+    - Direct links to event detail pages for management
+    
+    Statistics Calculations:
+    - Individual event attendance rates (Attendees / Registrations * 100)
+    - Total events count across the application
+    - Total registrations sum across all events
+    - Total attendees sum across all events
+    - Overall attendance rate for all events combined
+    
+    User Interactions:
+    - View Event Details: Navigate to specific event management page
+    - Help System: Contextual help explaining all features and metrics
+    - Create First Event: Quick access to event creation when no data exists
+    - Back to Events: Return to main events listing page
+    
+    Loading States:
+    - Loading spinner during data retrieval
+    - Empty state with call-to-action when no events exist
+    - Error handling for data loading failures
+    
+    Dependencies:
+    - IEventService: Event data retrieval
+    - IRegistrationService: Registration and attendance data
+    - IJSRuntime: Scroll management and DOM interactions
+    - ModalDialog: Help dialog display
+    
+    Usage: Accessed via `/attendance` route to view attendance analytics and performance
+    metrics across all events. Primary reporting interface for event success tracking.
+*@
+
+@page "/attendance"
+@inject IEventService EventService
+@inject IRegistrationService RegistrationService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Event Attendance | Events Manager</PageTitle>
+
+@* ... rest of the component ... *@
+````
+
+The summary comment block describes:
+- **Purpose**: What the page accomplishes (attendance overview and reporting)
+- **Features**: Key functionality including metrics, color coding, and navigation
+- **Data Display**: How information is presented and organized
+- **Statistics Calculations**: Specific metrics and formulas used
+- **User Interactions**: Available actions and their outcomes
+- **Loading States**: Different UI states and error handling
+- **Dependencies**: Required services and components
+- **Usage**: The page's role as the primary reporting interface
+
+This documentation helps developers understand the Attendance page's role in providing comprehensive event performance analytics and reporting capabilities.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Pages/Attendance/Attendance.razor.css`]Attendance.razor.css ) file with a summary comment block added at the top:
+
+````css
+/*
+    Attendance Page Styles
+    
+    Purpose: Provides responsive styling for the Attendance page, transforming tabular event data 
+    into mobile-friendly card layouts for optimal viewing across all device sizes.
+    
+    Responsive Features:
+    - Mobile-first design with breakpoint at 991.98px (Bootstrap lg breakpoint)
+    - Table-to-card transformation for mobile devices
+    - Automatic data label generation using CSS pseudo-elements
+    - Optimized spacing and typography for touch interfaces
+    
+    Mobile Layout (max-width: 991.98px):
+    - Hides table headers and converts rows to individual cards
+    - Each table row becomes a standalone card with border and shadow
+    - Table cells display as block elements with generated labels
+    - Responsive badge and button positioning
+    - Enhanced touch targets for mobile interaction
+    
+    Card Styling:
+    - Bootstrap-consistent border radius (0.375rem)
+    - Subtle box shadow for depth (0.125rem 0.25rem)
+    - Standard border color (#dee2e6) and background (#fff)
+    - Proper spacing between cards (1rem margin-bottom)
+    
+    Data Label System:
+    - Uses data-label attributes to generate field labels on mobile
+    - Bold labels (#6c757d color) for clear data hierarchy
+    - Consistent spacing between labels and values
+    - Maintains semantic structure without JavaScript
+    
+    Element Adjustments:
+    - Badge positioning optimized for mobile layout
+    - Button styling adapted for touch interfaces
+    - Footer statistics cards with responsive spacing
+    - Proper text alignment overrides for mobile display
+    
+    Usage: Automatically applied to Attendance.razor component to ensure optimal
+    user experience across desktop and mobile devices for attendance reporting.
+*/
+
+@media (max-width: 991.98px) {
+    .table-responsive {
+        border: none;
+    }
+
+    .table-responsive .table {
+        border: none;
+    }
+
+    .table-responsive .table thead {
+        display: none;
+    }
+
+    .table-responsive .table tbody tr {
+        display: block;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        background-color: #fff;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .table-responsive .table tbody td {
+        display: block;
+        text-align: left !important;
+        border: none;
+        padding: 0.5rem 0;
+        position: relative;
+        padding-left: 0 !important;
+    }
+
+    .table-responsive .table tbody td:before {
+        content: attr(data-label);
+        display: block;
+        font-weight: 600;
+        color: #6c757d;
+        margin-bottom: 0.25rem;
+    }
+
+    .table-responsive .table tbody td .badge {
+        margin-left: 0;
+    }
+
+    .table-responsive .table tbody td .btn {
+        margin-left: 0;
+        margin-top: 0.25rem;
+    }
+
+    .card-footer .row .col-md-3 {
+        margin-bottom: 1rem;
+    }
+
+    .card-footer .row .col-md-3:last-child {
+        margin-bottom: 0;
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the CSS accomplishes (responsive attendance page styling)
+- **Responsive Features**: Mobile-first design with specific breakpoint handling
+- **Mobile Layout**: How tables transform into cards for mobile viewing
+- **Card Styling**: Visual design elements and Bootstrap consistency
+- **Data Label System**: How field labels are generated using CSS
+- **Element Adjustments**: Specific optimizations for mobile elements
+- **Usage**: How it integrates with the Attendance component
+
+This documentation helps developers understand the responsive design system and how it ensures optimal user experience across different device sizes for attendance reporting.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Pages/About.razor`]About.razor ) file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    About Page Component
+    
+    Purpose: Provides comprehensive project documentation and information about the EventEase application,
+    including development methodology, technical requirements, and Microsoft Copilot integration details.
+    
+    Features:
+    - Complete project overview with academic context and objectives
+    - Table of contents with anchor navigation for easy section access
+    - Microsoft Copilot conversation transcript links for development transparency
+    - Technical requirements and architecture documentation
+    - Learning outcomes and educational objectives demonstration
+    - Project evolution timeline showing progressive development phases
+    - Development methodology explanation emphasizing AI-assisted development
+    - Responsive design with mobile-friendly navigation
+    
+    Content Sections:
+    - Project Overview: Application purpose and academic context
+    - Copilot Transcripts: Links to development conversation documents
+    - Project Objectives: Core functionality and user capabilities
+    - Technical Requirements: Technologies, frameworks, and components used
+    - Copilot Integration: AI-assisted development methodology details
+    - Learning Outcomes: Skills and competencies demonstrated
+    - Project Evolution: Development phases and progressive enhancement
+    - Development Methodology: AI-first approach and best practices
+    - Conclusion: Summary of achievements and learning journey
+    
+    Navigation Features:
+    - Anchor-based internal navigation between sections
+    - "Back to Top" buttons for improved user experience
+    - External links to documentation files and GitHub repository
+    - Responsive layout adapting to different screen sizes
+    
+    Dependencies:
+    - IJSRuntime: For scroll management and DOM manipulation
+    - External documentation files in /docs/ directory
+    - Bootstrap styling for responsive layout and components
+    
+    Usage: Accessed via `/about` route to provide comprehensive project information
+    for academic evaluation, portfolio demonstration, and development transparency.
+*@
+
+@page "/about"
+@inject IJSRuntime JSRuntime
+
+<PageTitle>About | Events Manager</PageTitle>
+
+@* ... rest of the component ... *@
+````
+
+The summary comment block describes:
+- **Purpose**: What the page accomplishes (comprehensive project documentation)
+- **Features**: Key functionality including navigation, documentation, and responsive design
+- **Content Sections**: All major sections and their specific purposes
+- **Navigation Features**: Internal navigation and user experience enhancements
+- **Dependencies**: Required services and external resources
+- **Usage**: The page's role in academic evaluation and project transparency
+
+This documentation helps developers understand the About page's role as a comprehensive project documentation hub that demonstrates the development process and educational outcomes.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Pages/About.razor.css`]About.razor.css ) file with a summary comment block added at the top:
+
+````css
+/*
+    About Page Styles
+    
+    Purpose: Provides custom styling for the About page component to enhance readability,
+    navigation, and visual presentation of project documentation content.
+    
+    Key Features:
+    - Scroll margin adjustments for anchor navigation with fixed headers
+    - Consistent primary color theming throughout the documentation
+    - Enhanced link styling for better user interaction feedback
+    - Improved list spacing for better content readability
+    - Button styling overrides for consistent brand appearance
+    
+    Navigation Support:
+    - scroll-margin-top: Ensures proper positioning when navigating to anchor sections
+    - Accounts for fixed headers or navigation elements (80px offset)
+    - Smooth scrolling experience for table of contents navigation
+    
+    Color Scheme:
+    - Primary blue (#0d6efd) for consistent brand theming
+    - Hover effects on interactive elements for better UX
+    - Bootstrap color overrides for consistent appearance
+    
+    Typography Enhancements:
+    - List item spacing for improved content scanability
+    - Link hover effects for clear interaction feedback
+    - Consistent text decoration handling
+    
+    Usage: Automatically applied to About.razor component to provide enhanced
+    styling for project documentation, ensuring optimal readability and navigation
+    experience for academic evaluation and portfolio presentation.
+*/
+
+section {
+    scroll-margin-top: 80px;
+}
+
+.text-primary {
+    color: #0d6efd !important;
+}
+
+.btn-outline-primary {
+    color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-outline-primary:hover {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+ul li {
+    margin-bottom: 0.5rem;
+}
+
+a {
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the CSS accomplishes (enhanced About page styling)
+- **Key Features**: Main styling enhancements and their benefits
+- **Navigation Support**: How scroll margins improve anchor navigation
+- **Color Scheme**: Consistent brand theming and interaction feedback
+- **Typography Enhancements**: Improved readability and spacing
+- **Usage**: How it integrates with the About component for documentation presentation
+
+This documentation helps developers understand the styling choices that enhance the About page's role as a professional project documentation interface.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Pages/Home.razor`]Home.razor ) file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    Home Page Component
+    
+    Purpose: Provides the landing page and introduction for the EventEase application,
+    welcoming users and explaining the application's core purpose and features.
+    
+    Features:
+    - Welcome message and application introduction
+    - Overview of core event management capabilities
+    - Feature highlights including event creation, participant registration, and attendance tracking
+    - Navigation links to User Manual and About pages for additional information
+    - Feedback encouragement and future development messaging
+    - Professional presentation suitable for corporate environment
+    
+    Content Sections:
+    - Introduction: Application purpose and business value proposition
+    - Core Features: Key functionality overview with bulleted capabilities
+    - User Manual Link: Direct access to detailed usage instructions
+    - Feedback Section: Encouragement for user input and continuous improvement
+    - About Page Link: Access to development process and technical details
+    - Moving Forward: Collaborative messaging and user engagement
+    
+    User Experience:
+    - Clean, professional layout appropriate for business users
+    - Clear navigation pathways to key application sections
+    - Informative content that sets proper expectations
+    - Encourages exploration of application features
+    
+    Dependencies:
+    - Navigation links to /user-manual and /about routes
+    - PageTitle component for browser tab display
+    - Standard HTML elements with Bootstrap styling
+    
+    Usage: Accessed via root route "/" as the main entry point for new users.
+    Serves as the primary introduction and orientation to the EventEase application.
+*@
+
+@page "/"
+
+<PageTitle>Home | Events Manager</PageTitle>
+
+<h1 class="mb-4">Welcome to the EventEase Event Manager Application</h1>
+<h2>Introduction</h2>
+<p>
+    Welcome to EventEase—a purpose-built solution designed to simplify and optimize the way employees manage
+    company-sponsored events. By streamlining logistics and empowering teams with an intuitive interface, EventEase
+    supports more effective planning, coordination, and tracking across all stages of event management.
+</P>
+<h2>Core Features</h2>
+<p>
+    The EventEase Event Management application equips employees with a streamlined tool to efficiently manage
+    company-led events. With intuitive features designed to simplify logistics, users can easily create, view, update,
+    or remove details related to:
+<ul>
+    <li>Events managed by the company</li>
+    <li>Participants registered to attend events</li>
+    <li>Event attendance tracking</li>
+</ul>
+</p>
+<p>Learn more about using the application in the <a href="/user-manual">User Manual</a>.</p>
+<h2>Feedback And Future Development</h2>
+<p>
+    This is our first release of the application, so your insights matter. We encourage your management team to
+    share observations and recommendations—your front-line experience plays a key role in refining performance, shaping
+    future enhancements, and addressing any issues that emerge.
+</p>
+<p>Get a peek into the application's development process in the <a href="/about">About page</a>.</p>
+<h2>Moving Forward Together</h2>
+<p>
+    Together, we're laying the foundation for a more organized, user-driven approach to event oversight. Your input will
+    help ensure that EventEase continues to evolve into a tool that meets your team's needs with precision and ease.
+    Thanks for being part of this first chapter!
+</p>
+````
+
+The summary comment block describes:
+- **Purpose**: What the page accomplishes (landing page and introduction)
+- **Features**: Key functionality including welcome messaging and navigation
+- **Content Sections**: All major sections and their specific purposes
+- **User Experience**: Professional presentation and navigation pathways
+- **Dependencies**: Required components and routing
+- **Usage**: The page's role as the main entry point for new users
+
+This documentation helps developers understand the Home page's role as the primary introduction and orientation point for users entering the EventEase application.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Pages/UserManual.razor`]UserManual.razor ) file with a summary comment block added at the top:
+
+````aspnetcorerazor
+@*
+    UserManual Page Component
+    
+    Purpose: Provides comprehensive user documentation and step-by-step instructions for using 
+    the EventEase application, serving as the primary help resource for end users.
+    
+    Features:
+    - Complete user guide with detailed instructions for all application features
+    - Interactive accordion-based navigation for organized content sections
+    - Quick navigation menu with anchor links for easy section access
+    - Step-by-step tutorials with visual cues and formatting
+    - Troubleshooting section with common issues and solutions
+    - Frequently Asked Questions (FAQ) for quick answers
+    - Responsive design optimized for desktop and mobile viewing
+    - "Back to Top" buttons throughout for improved navigation
+    
+    Content Sections:
+    - Getting Started: Application overview and initial access instructions
+    - Managing Events: Complete event CRUD operations guide
+    - Managing Registrations: Registration and attendee management instructions
+    - Troubleshooting: Common issues identification and resolution steps
+    - FAQ: Frequently asked questions with concise answers
+    
+    Navigation Features:
+    - Quick navigation card with section links at the top
+    - Accordion-style collapsible sections for organized content
+    - Smooth scrolling to top functionality
+    - Anchor-based navigation between sections
+    - Visual indicators for expanded/collapsed sections
+    
+    Interactive Elements:
+    - Collapsible accordion sections with state management
+    - Scroll-to-top buttons for improved user experience
+    - Color-coded badges and alerts for important information
+    - Bootstrap icons for visual enhancement and clarity
+    
+    User Experience:
+    - Professional layout suitable for business documentation
+    - Clear visual hierarchy with icons and color coding
+    - Comprehensive coverage of all application features
+    - Practical examples and real-world usage scenarios
+    - Warning alerts for important constraints and limitations
+    
+    Dependencies:
+    - IJSRuntime: For scroll management and DOM interactions
+    - Bootstrap: For responsive layout and interactive components
+    - Bootstrap Icons: For visual enhancement and navigation cues
+    
+    Usage: Accessed via `/user-manual` route to provide comprehensive documentation
+    for EventEase application users. Primary help resource for training and support.
+*@
+
+@page "/user-manual"
+@inject IJSRuntime JSRuntime
+
+<PageTitle>User Manual | EventEase</PageTitle>
+
+@* ... rest of the component ... *@
+````
+
+The summary comment block describes:
+- **Purpose**: What the page accomplishes (comprehensive user documentation)
+- **Features**: Key functionality including interactive navigation and responsive design
+- **Content Sections**: All major documentation sections and their purposes
+- **Navigation Features**: How users can navigate through the documentation
+- **Interactive Elements**: User interaction capabilities and state management
+- **User Experience**: Professional presentation and comprehensive coverage
+- **Dependencies**: Required services and external resources
+- **Usage**: The page's role as the primary help and training resource
+
+This documentation helps developers understand the UserManual page's role as a comprehensive, interactive documentation system that supports user training and ongoing help needs.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Pages/UserManual.razor.css`]UserManual.razor.css ) file with a summary comment block added at the top:
+
+````css
+/*
+    UserManual Page Styles
+    
+    Purpose: Provides custom styling for the UserManual page component to enhance readability,
+    visual hierarchy, and user interaction with the accordion-based documentation interface.
+    
+    Key Features:
+    - Accordion button styling with active state highlighting
+    - Enhanced card shadows for better visual separation
+    - Badge sizing optimization for consistent labeling
+    - Bootstrap component customizations for professional appearance
+    
+    Accordion Enhancements:
+    - Active accordion buttons with light blue background (#e7f1ff)
+    - Primary color text for expanded sections (#0c63e4)
+    - Visual feedback for section state and user interaction
+    - Consistent with application's primary color scheme
+    
+    Visual Design:
+    - Subtle box shadows (0 2px 4px rgba(0, 0, 0, 0.1)) for depth
+    - Refined badge sizing (0.75em) for better readability
+    - Professional appearance suitable for business documentation
+    - Enhanced visual hierarchy for improved content scanning
+    
+    Usage: Automatically applied to UserManual.razor component to provide enhanced
+    styling for interactive documentation, ensuring optimal readability and professional
+    presentation for user training and support materials.
+*/
+
+.accordion-button:not(.collapsed) {
+    background-color: #e7f1ff;
+    color: #0c63e4;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.badge {
+    font-size: 0.75em;
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the CSS accomplishes (enhanced UserManual styling)
+- **Key Features**: Main styling enhancements and their benefits
+- **Accordion Enhancements**: Specific styling for interactive documentation sections
+- **Visual Design**: Professional appearance and visual hierarchy improvements
+- **Usage**: How it integrates with the UserManual component for documentation presentation
+
+This documentation helps developers understand the styling choices that enhance the UserManual page's role as a professional, interactive documentation interface.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Properties/launchSettings.json`]launchSettings.json ) file with a summary comment block added at the top:
+
+````json
+/*
+    Launch Settings Configuration
+    
+    Purpose: Defines development server launch profiles and configuration settings for the 
+    EventEase Blazor application during development and debugging.
+    
+    Launch Profiles:
+    - http: Development server running on HTTP protocol (port 5045)
+    - https: Development server with HTTPS support (ports 7044/5045)
+    
+    Configuration Features:
+    - Automatic browser launch on application start
+    - Development environment variable configuration
+    - Blazor WebAssembly debugging support with WebSocket proxy
+    - Hot reload and development messages enabled
+    - Browser inspection URI configuration for debugging
+    
+    Development Settings:
+    - Environment: Development mode for detailed error messages
+    - Port Configuration: HTTP (5045) and HTTPS (7044) endpoints
+    - Browser Launch: Automatic opening of default browser
+    - Debug Support: WebSocket proxy for Blazor debugging tools
+    - Hot Reload: Enabled for rapid development iteration
+    
+    Debug Features:
+    - inspectUri: WebSocket proxy configuration for browser debugging
+    - dotnetRunMessages: Displays .NET runtime messages during startup
+    - ASPNETCORE_ENVIRONMENT: Set to Development for enhanced debugging
+    
+    Usage: Used by Visual Studio, VS Code, and dotnet CLI to configure the development
+    server environment when running the EventEase application locally.
+*/
+
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
+      "applicationUrl": "http://localhost:5045",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "https": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
+      "applicationUrl": "https://localhost:7044;http://localhost:5045",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the configuration file accomplishes (development server setup)
+- **Launch Profiles**: Available development server configurations
+- **Configuration Features**: Key development and debugging capabilities
+- **Development Settings**: Environment and networking configuration
+- **Debug Features**: Debugging and inspection capabilities
+- **Usage**: How the file is used by development tools and CLI
+
+This documentation helps developers understand the launch configuration options and how they support the development workflow for the EventEase application.
+
+Similar code found with 1 license type
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Services/Interfaces/IEventService.cs`]IEventService.cs ) file with a summary comment block added at the top:
+
+````csharp
+/*
+    IEventService Interface
+    
+    Purpose: Defines the contract for event data management operations in the EventEase application,
+    providing a standardized interface for event CRUD operations and data retrieval.
+    
+    Core Operations:
+    - GetAllAsync: Retrieves all events from the data store
+    - GetByIdAsync: Fetches a specific event by its unique identifier
+    - AddAsync: Creates a new event and returns the created entity
+    - UpdateAsync: Modifies an existing event and returns the updated entity
+    - DeleteAsync: Removes an event from the data store by ID
+    
+    Advanced Operations:
+    - GetPagedAsync: Retrieves events with pagination support and cancellation
+    - TryGetByIdAsync: Safe event retrieval that returns null if not found
+    - ExistsAsync: Checks if an event exists without retrieving the full entity
+    
+    Design Patterns:
+    - Repository Pattern: Abstracts data access logic from business logic
+    - Async/Await: All operations are asynchronous for optimal performance
+    - Cancellation Support: Long-running operations support cancellation tokens
+    - Null Safety: Provides safe methods that handle missing entities gracefully
+    
+    Error Handling:
+    - GetByIdAsync: May throw exceptions for invalid IDs or missing entities
+    - TryGetByIdAsync: Returns null instead of throwing for missing entities
+    - Validation: Implementations should validate input parameters
+    
+    Usage: Implemented by concrete service classes and injected into components
+    for event management operations throughout the EventEase application.
+*/
+
+using BlazorFinalProject.Models;
+
+namespace BlazorFinalProject.Services;
+
+public interface IEventService
+{
+    Task<List<Event>> GetAllAsync();
+    Task<Event> GetByIdAsync(Guid id);
+    Task<Event> AddAsync(Event evt);
+    Task<Event> UpdateAsync(Event eventToUpdate);
+    Task DeleteAsync(Guid id);
+    Task<PagedResult<Event>> GetPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default);
+
+    Task<Event?> TryGetByIdAsync(Guid id);
+    Task<bool> ExistsAsync(Guid id);
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the interface defines (event data management contract)
+- **Core Operations**: Basic CRUD operations with their purposes
+- **Advanced Operations**: Additional methods for pagination and safe access
+- **Design Patterns**: Architecture patterns and design principles used
+- **Error Handling**: Different error handling approaches for various methods
+- **Usage**: How the interface is implemented and used in the application
+
+This documentation helps developers understand the event service contract and how it supports the data management needs of the EventEase application.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Services/Interfaces/IHybridEventStateService.cs`]IHybridEventStateService.cs ) file with a summary comment block added at the top:
+
+````csharp
+/*
+    IHybridEventStateService Interface
+    
+    Purpose: Defines the contract for managing event form state and statistics caching across 
+    components in the EventEase application, providing centralized state management for event operations.
+    
+    State Management:
+    - CurrentEventForm: Tracks the event being created or edited in forms
+    - IsFormDirty: Monitors unsaved changes to prevent data loss
+    - CurrentEventPageSize: Maintains pagination state across navigation
+    
+    Statistics Caching:
+    - RegistrationCounts: Cached registration counts per event for performance
+    - AttendeeCounts: Cached attendance counts per event for real-time display
+    - Reduces redundant database queries and improves UI responsiveness
+    
+    Form Operations:
+    - InitializeForNewEventAsync: Sets up form state for creating new events
+    - InitializeForEditAsync: Prepares form state with existing event data
+    - SaveFormAsync: Persists form changes and updates cached statistics
+    - ResetEventFormAsync: Clears form state and returns to clean state
+    
+    State Tracking:
+    - MarkFormClean: Indicates form has no unsaved changes
+    - MarkFormDirty: Flags form as having unsaved modifications
+    - Prevents accidental data loss during navigation
+    
+    Design Patterns:
+    - Singleton Pattern: Shared state across application components
+    - Observer Pattern: Components can react to state changes
+    - Disposable Pattern: Proper cleanup of resources and event handlers
+    
+    Usage: Implemented by hybrid state service and injected into event-related components
+    to coordinate form state, caching, and cross-component communication in the EventEase application.
+*/
+
+using BlazorFinalProject.Models;
+
+namespace BlazorFinalProject.Services.Interfaces
+{
+    public interface IHybridEventStateService : IDisposable
+    {
+        Event CurrentEventForm { get; }
+
+        Dictionary<Guid, int> RegistrationCounts { get; }
+        Dictionary<Guid, int> AttendeeCounts { get; }
+
+        bool IsFormDirty { get; }
+        public int? CurrentEventPageSize { get; set; }
+
+        Task InitializeForNewEventAsync();
+        Task InitializeForEditAsync(Event eventToEdit);
+
+        void MarkFormClean();
+        void MarkFormDirty();
+        Task SaveFormAsync();
+        Task ResetEventFormAsync();
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the interface defines (event state management contract)
+- **State Management**: Core state tracking capabilities
+- **Statistics Caching**: Performance optimization through caching
+- **Form Operations**: Event form lifecycle management
+- **State Tracking**: Dirty state monitoring for data protection
+- **Design Patterns**: Architecture patterns implemented
+- **Usage**: How the interface supports cross-component state coordination
+
+This documentation helps developers understand the hybrid event state service's role in managing complex state across the EventEase application.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Services/Interfaces/IHybridRegistrationStateService.cs`]IHybridRegistrationStateService.cs ) file with a summary comment block added at the top:
+
+````csharp
+/*
+    IHybridRegistrationStateService Interface
+    
+    Purpose: Defines the contract for managing registration form state and pagination across 
+    components in the EventEase application, providing centralized state management for registration operations.
+    
+    State Management:
+    - CurrentRegistrationForm: Tracks the registration being created or edited in forms
+    - IsEditing: Indicates whether the form is in edit mode (vs. create mode)
+    - IsFormDirty: Monitors unsaved changes to prevent data loss
+    - CurrentRegistrationPageSizes: Maintains pagination state per event for registration lists
+    
+    Form Operations:
+    - InitializeForNewRegistrationAsync: Sets up form state for creating new registrations
+    - InitializeForEditRegistrationAsync: Prepares form state with existing registration data
+    - SaveRegistrationFormAsync: Persists form changes and handles data validation
+    - ResetRegistrationFormAsync: Clears form state and returns to clean state
+    
+    State Tracking:
+    - MarkFormClean: Indicates form has no unsaved changes
+    - MarkFormDirty: Flags form as having unsaved modifications
+    - HasUnsavedChanges: Checks for any pending changes to prevent data loss
+    - Prevents accidental data loss during navigation or form closure
+    
+    Pagination Management:
+    - Tracks registration list page sizes per individual event
+    - Preserves user preferences for pagination across navigation
+    - Enables different page sizes for different events simultaneously
+    
+    Design Patterns:
+    - Singleton Pattern: Shared state across application components
+    - State Machine: Manages form lifecycle states (new, edit, clean, dirty)
+    - Repository Pattern: Abstracts registration data operations
+    
+    Usage: Implemented by hybrid registration state service and injected into registration-related 
+    components to coordinate form state, pagination, and cross-component communication in the EventEase application.
+*/
+
+namespace BlazorFinalProject.Services;
+
+public interface IHybridRegistrationStateService
+{
+    Registration? CurrentRegistrationForm { get; }
+    public Dictionary<Guid, int> CurrentRegistrationPageSizes { get; set; }
+    bool IsEditing { get; }
+    bool IsFormDirty { get; }
+    Task InitializeForNewRegistrationAsync(Guid eventId);
+    Task InitializeForEditRegistrationAsync(Registration registration);
+    void MarkFormClean();
+    void MarkFormDirty();
+    Task SaveRegistrationFormAsync();
+    Task ResetRegistrationFormAsync();
+    bool HasUnsavedChanges();
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the interface defines (registration state management contract)
+- **State Management**: Core state tracking capabilities for registration forms
+- **Form Operations**: Registration form lifecycle management
+- **State Tracking**: Dirty state monitoring and change detection
+- **Pagination Management**: Per-event pagination state preservation
+- **Design Patterns**: Architecture patterns implemented
+- **Usage**: How the interface supports registration operations across components
+
+This documentation helps developers understand the hybrid registration state service's role in managing registration form state and pagination across the EventEase application.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Services/Interfaces/IMockDataService.cs`]IMockDataService.cs ) file with a summary comment block added at the top:
+
+````csharp
+/*
+    IMockDataService Interface
+    
+    Purpose: Defines the contract for generating and seeding sample data in the EventEase application
+    for demonstration, testing, and development purposes.
+    
+    Core Operations:
+    - SeedRecordsAsync: Generates and inserts sample event records into the data store
+    - SeedAllAsync: Comprehensive data seeding including events, registrations, and attendee data
+    
+    Data Generation Features:
+    - Creates realistic sample events with varied dates, locations, and details
+    - Generates corresponding registrations with diverse attendee information
+    - Populates attendance tracking data for demonstration of reporting features
+    - Provides consistent, repeatable test data for development and demos
+    
+    Use Cases:
+    - Application demonstration and showcase scenarios
+    - Development environment setup with realistic data
+    - Testing UI components with populated data sets
+    - Training scenarios for new users learning the application
+    - Quality assurance testing with known data sets
+    
+    Callback Support:
+    - onSeedComplete: Optional callback function executed after seeding completion
+    - Enables UI updates, notifications, or post-seeding operations
+    - Supports asynchronous completion handling for better user experience
+    
+    Design Patterns:
+    - Factory Pattern: Generates structured sample data objects
+    - Async/Await: Non-blocking data generation and insertion operations
+    - Callback Pattern: Flexible completion handling for different scenarios
+    
+    Usage: Implemented by mock data service and used in development builds
+    to quickly populate the EventEase application with sample data for testing and demonstration.
+*/
+
+namespace BlazorFinalProject.Services.Interfaces
+{
+    public interface IMockDataService
+    {
+        Task SeedRecordsAsync();
+        Task SeedAllAsync(Func<Task>? onSeedComplete = null);
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the interface defines (sample data generation contract)
+- **Core Operations**: Available data seeding methods and their scope
+- **Data Generation Features**: Types of sample data created
+- **Use Cases**: When and why mock data is needed
+- **Callback Support**: How completion callbacks work
+- **Design Patterns**: Architecture patterns implemented
+- **Usage**: How the interface supports development and testing workflows
+
+This documentation helps developers understand the mock data service's role in providing realistic sample data for development, testing, and demonstration purposes.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Services/Interfaces/IRegistrationService.cs`]IRegistrationService.cs ) file with a summary comment block added at the top:
+
+````csharp
+/*
+    IRegistrationService Interface
+    
+    Purpose: Defines the contract for registration data management operations in the EventEase application,
+    providing a standardized interface for registration CRUD operations, event-specific queries, and attendance tracking.
+    
+    Core Operations:
+    - GetAllAsync: Retrieves all registrations from the data store
+    - GetByIdAsync: Fetches a specific registration by its unique identifier
+    - AddAsync: Creates a new registration and returns the created entity
+    - UpdateAsync: Modifies an existing registration and returns the updated entity
+    - DeleteAsync: Removes a registration from the data store by ID
+    
+    Event-Specific Operations:
+    - GetAllForEventAsync: Retrieves all registrations for a specific event
+    - GetPagedForEventAsync: Paginated registrations for a specific event with cancellation
+    - GetRegistrationCountForEventAsync: Gets total registration count for an event
+    - GetAttendedRegistrationsForEventAsync: Retrieves only attended registrations for an event
+    - IsUserRegisteredForEventAsync: Checks if a user is already registered for an event
+    
+    Advanced Operations:
+    - GetPagedAsync: Retrieves registrations with pagination support and cancellation
+    - TryGetByIdAsync: Safe registration retrieval that returns null if not found
+    - ExistsAsync: Checks if a registration exists without retrieving the full entity
+    
+    Design Patterns:
+    - Repository Pattern: Abstracts data access logic from business logic
+    - Async/Await: All operations are asynchronous for optimal performance
+    - Cancellation Support: Long-running operations support cancellation tokens
+    - Null Safety: Provides safe methods that handle missing entities gracefully
+    
+    Error Handling:
+    - GetByIdAsync: May throw exceptions for invalid IDs or missing entities
+    - TryGetByIdAsync: Returns null instead of throwing for missing entities
+    - Validation: Implementations should validate input parameters and business rules
+    
+    Usage: Implemented by concrete service classes and injected into components
+    for registration management, attendance tracking, and event participation operations
+    throughout the EventEase application.
+*/
+
+using BlazorFinalProject.Models;
+
+namespace BlazorFinalProject.Services;
+
+public interface IRegistrationService
+{
+    Task<List<Registration>> GetAllAsync();
+    Task<List<Registration>> GetAllForEventAsync(Guid eventId);
+    Task<Registration> GetByIdAsync(Guid id);
+    Task<Registration> AddAsync(Registration registration);
+    Task<Registration> UpdateAsync(Registration registration);
+    Task DeleteAsync(Guid id);
+    Task<PagedResult<Registration>> GetPagedForEventAsync(Guid eventId, int pageNumber, int pageSize, CancellationToken cancellationToken = default);
+    Task<Registration?> TryGetByIdAsync(Guid id);
+    Task<bool> ExistsAsync(Guid id);
+    Task<int> GetRegistrationCountForEventAsync(Guid eventId);
+    Task<List<Registration>> GetAttendedRegistrationsForEventAsync(Guid eventId);
+    Task<bool> IsUserRegisteredForEventAsync(Guid eventId, string emailAddress);
+    Task<PagedResult<Registration>> GetPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default);
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the interface defines (registration data management contract)
+- **Core Operations**: Basic CRUD operations with their purposes
+- **Event-Specific Operations**: Event-focused queries and operations
+- **Advanced Operations**: Pagination, safe access, and existence checks
+- **Design Patterns**: Architecture patterns and design principles used
+- **Error Handling**: Different error handling approaches for various methods
+- **Usage**: How the interface supports registration and attendance management
+
+This documentation helps developers understand the registration service contract and how it supports comprehensive registration management in the EventEase application.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Services/Mock/MockDataFactory.cs`]MockDataFactory.cs ) file with a summary comment block added at the top:
+
+````csharp
+/*
+    MockDataFactory Static Class
+    
+    Purpose: Provides factory methods for generating realistic sample data for the EventEase application,
+    including events, registrations, and attendee information for development, testing, and demonstration.
+    
+    Core Functionality:
+    - CreateSeedData: Main factory method returning complete dataset of events and registrations
+    - CreateEventIds: Generates consistent GUIDs for predefined event categories
+    - CreateEvents: Creates diverse event objects with varied dates, locations, and descriptions
+    - CreateRegistrations: Populates realistic attendee data linked to specific events
+    
+    Sample Data Features:
+    - 10 distinct technology-focused events (conferences, workshops, meetups)
+    - Mixed past and future event dates for realistic demonstration scenarios
+    - Diverse geographic locations across major US cities
+    - Comprehensive registration data with varied attendee profiles
+    - Realistic contact information with proper formatting
+    - Attendance tracking with both registered and attended participants
+    - Special accommodation notes and preferences for accessibility testing
+    
+    Event Categories:
+    - Developer conferences and summits
+    - Technical workshops and bootcamps
+    - Industry forums and networking events
+    - Startup and innovation gatherings
+    - Specialized technology topics (AI, UX, Cloud, Security)
+    
+    Registration Data:
+    - Authentic-looking names and contact information
+    - Properly formatted phone numbers following validation patterns
+    - Diverse special notes (dietary restrictions, accessibility needs, VIP status)
+    - Mixed attendance status for realistic reporting scenarios
+    - Speaker and panelist designations for role-based testing
+    
+    Design Patterns:
+    - Factory Pattern: Centralized creation of related object hierarchies
+    - Record Types: Immutable data structures for internal data modeling
+    - Dictionary Mapping: Consistent relationship management between events and registrations
+    - Static Methods: No state management required for data generation
+    
+    Usage: Called by MockDataService to populate the EventEase application with
+    comprehensive sample data for development, testing, and demonstration purposes.
+*/
+
+namespace BlazorFinalProject.Services.Mock;
+
+public static class MockDataFactory
+{
+    public static (List<Event> Events, List<Registration> Registrations) CreateSeedData()
+    {
+        var eventIds = CreateEventIds();
+        var events = CreateEvents(eventIds);
+        var registrations = CreateRegistrations(eventIds);
+
+        return (events, registrations);
+    }
+
+    // ... rest of the class implementation ...
+````
+
+The summary comment block describes:
+- **Purpose**: What the factory accomplishes (realistic sample data generation)
+- **Core Functionality**: Main methods and their responsibilities
+- **Sample Data Features**: Types and characteristics of generated data
+- **Event Categories**: Variety of events created for testing scenarios
+- **Registration Data**: Comprehensive attendee information details
+- **Design Patterns**: Architecture patterns and implementation approach
+- **Usage**: How the factory integrates with the broader mock data system
+
+This documentation helps developers understand the mock data factory's role in providing comprehensive, realistic test data for the EventEase application across various development and testing scenarios.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Services/Mock/MockDataService.cs`]MockDataService.cs ) file with a summary comment block added at the top:
+
+````csharp
+/*
+    MockDataService Implementation
+    
+    Purpose: Provides mock data generation and seeding functionality for the EventEase application,
+    managing sample data persistence through browser local storage for development and demonstration.
+    
+    Core Operations:
+    - SeedRecordsAsync: Clears existing data and populates fresh sample events and registrations
+    - SeedAllAsync: Comprehensive seeding with optional completion callback support
+    
+    Data Management:
+    - Uses browser localStorage for client-side data persistence
+    - Manages events and registrations as separate storage keys
+    - Clears existing data before seeding to ensure clean state
+    - Integrates with MockDataFactory for realistic sample data generation
+    
+    Storage Strategy:
+    - EventsKey: "events" - stores all sample event records
+    - RegistrationsKey: "registrations" - stores all sample registration records
+    - JSON serialization through ILocalStorageService for browser compatibility
+    - Asynchronous operations for non-blocking UI interactions
+    
+    Callback Support:
+    - onSeedComplete: Optional callback executed after seeding completion
+    - Enables UI updates, notifications, or post-seeding operations
+    - Supports component refresh and state synchronization after data loading
+    
+    Dependencies:
+    - ILocalStorageService: Browser storage abstraction for data persistence
+    - MockDataFactory: Static factory for generating sample data objects
+    - Implements IMockDataService interface for dependency injection
+    
+    Usage: Injected into components and pages to populate the EventEase application
+    with realistic sample data for development, testing, and demonstration scenarios.
+    Particularly useful for showcasing application features without requiring backend services.
+*/
+
+namespace BlazorFinalProject.Services.Mock;
+
+public class MockDataService : IMockDataService
+{
+    private readonly ILocalStorageService _localStorage;
+    private const string EventsKey = "events";
+    private const string RegistrationsKey = "registrations";
+
+    public MockDataService(ILocalStorageService localStorage)
+    {
+        _localStorage = localStorage;
+    }
+
+    public async Task SeedRecordsAsync()
+    {
+        await _localStorage.RemoveItemAsync(EventsKey);
+        await _localStorage.RemoveItemAsync(RegistrationsKey);
+
+        var (events, registrations) = MockDataFactory.CreateSeedData();
+
+        await _localStorage.SetItemAsync(EventsKey, events);
+        await _localStorage.SetItemAsync(RegistrationsKey, registrations);
+    }
+
+    public async Task SeedAllAsync(Func<Task>? onSeedComplete = null)
+    {
+        await SeedRecordsAsync();
+
+        if (onSeedComplete is not null)
+        {
+            await onSeedComplete();
+        }
+    }
+}
+````
+
+The summary comment block describes:
+- **Purpose**: What the service accomplishes (mock data generation and persistence)
+- **Core Operations**: Available seeding methods and their functionality
+- **Data Management**: How data is stored and managed in localStorage
+- **Storage Strategy**: Specific keys and persistence approach
+- **Callback Support**: How completion callbacks work
+- **Dependencies**: Required services and interfaces
+- **Usage**: How the service supports development and demonstration workflows
+
+This documentation helps developers understand the mock data service's role in providing realistic sample data through browser storage for the EventEase application.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Services/EventService.cs`]EventService.cs ) file with a summary comment block added at the top:
+
+````csharp
+/*
+    EventService Implementation
+    
+    Purpose: Provides event data management operations for the EventEase application using browser 
+    local storage as the persistence layer, implementing the IEventService interface contract.
+    
+    Core Operations:
+    - GetAllAsync: Retrieves all events from local storage
+    - GetByIdAsync: Fetches specific event by ID with exception handling for missing entities
+    - AddAsync: Creates new events with automatic GUID generation and validation
+    - UpdateAsync: Modifies existing events with comprehensive property updates
+    - DeleteAsync: Removes events and their associated registrations (cascade delete)
+    
+    Advanced Operations:
+    - GetPagedAsync: Provides paginated event retrieval with configurable page sizes
+    - TryGetByIdAsync: Safe event retrieval returning null for missing entities
+    - ExistsAsync: Efficient existence checking without full entity retrieval
+    
+    Storage Management:
+    - Uses browser localStorage through ILocalStorageService abstraction
+    - EventsKey: "events" - primary storage key for event data
+    - RegistrationsKey: "registrations" - manages associated registration cleanup
+    - JSON serialization for browser compatibility and data persistence
+    
+    Data Integrity:
+    - Cascade deletion: Removes associated registrations when deleting events
+    - Input validation: Validates required fields and non-empty GUIDs
+    - Null safety: Handles missing data gracefully with appropriate defaults
+    - Automatic GUID generation for new events
+    
+    Error Handling:
+    - Comprehensive logging for all operations (success, warnings, errors)
+    - Exception propagation with context-specific error messages
+    - Graceful degradation for storage access failures
+    - Validation exceptions for invalid input parameters
+    
+    Configuration:
+    - DefaultPageSize: 10 items per page for pagination
+    - MaxPageSize: 100 items maximum page size limit
+    - Configurable page size validation and normalization
+    
+    Dependencies:
+    - ILocalStorageService: Browser storage abstraction for data persistence
+    - ILogger<EventService>: Structured logging for monitoring and debugging
+    - Implements IEventService interface for dependency injection
+    
+    Usage: Injected into components and pages throughout the EventEase application
+    to provide reliable event data management with local storage persistence,
+    supporting offline functionality and rapid prototyping scenarios.
+*/
+
+namespace BlazorFinalProject.Services;
+
+public class EventService : IEventService
+{
+    private readonly ILocalStorageService _localStorage;
+    private readonly ILogger<EventService> _logger;
+    private const string EventsKey = "events";
+    private const string RegistrationsKey = "registrations";
+    private const int DefaultPageSize = 10;
+    private const int MaxPageSize = 100;
+
+    // ... rest of the implementation ...
+````
+
+The summary comment block describes:
+- **Purpose**: What the service accomplishes (event data management with localStorage)
+- **Core Operations**: Basic CRUD operations with their specific behaviors
+- **Advanced Operations**: Additional methods for pagination and safe access
+- **Storage Management**: How data is persisted and managed in browser storage
+- **Data Integrity**: Validation, cascade operations, and data consistency measures
+- **Error Handling**: Comprehensive logging and exception management approach
+- **Configuration**: Constants and configurable limits
+- **Dependencies**: Required services and interfaces
+- **Usage**: How the service supports the broader EventEase application
+
+This documentation helps developers understand the EventService's role as the primary data access layer for events, using browser storage for persistence while maintaining data integrity and providing comprehensive error handling.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Services/HybridEventStateService.cs`]HybridEventStateService.cs ) file with a summary comment block added at the top:
+
+````csharp
+/*
+    HybridEventStateService Implementation
+    
+    Purpose: Provides centralized state management for event forms with automatic persistence to browser 
+    localStorage, ensuring data integrity and preventing data loss during event creation and editing operations.
+    
+    Core Features:
+    - Event form state management with thread-safe access
+    - Automatic draft saving with configurable intervals (1 second)
+    - Separate storage for new events vs. editing existing events
+    - Cross-component state sharing for event operations
+    - Statistics caching for registration and attendee counts
+    - Pagination state preservation across navigation
+    
+    State Management:
+    - CurrentEventForm: Thread-safe access to current form data
+    - IsFormDirty: Tracks unsaved changes to prevent data loss
+    - CurrentEventPageSize: Maintains pagination preferences
+    - RegistrationCounts: Cached registration statistics per event
+    - AttendeeCounts: Cached attendance statistics per event
+    
+    Auto-Save Features:
+    - Timer-based automatic saving every 1000ms when form is dirty
+    - Separate storage keys for new vs. edit scenarios
+    - Draft recovery on form initialization
+    - Graceful error handling for storage failures
+    
+    Storage Strategy:
+    - NewEventDraftKey: "eventForm_newDraft" for new event drafts
+    - EditEventDraftPrefix: "eventForm_edit_" + EventId for edit drafts
+    - JSON serialization for browser localStorage compatibility
+    - Automatic cleanup of drafts when forms are reset
+    
+    Thread Safety:
+    - Lock-based synchronization for concurrent access protection
+    - Safe property access across multiple components
+    - Thread-safe timer operations for auto-save functionality
+    
+    Lifecycle Management:
+    - InitializeForNewEventAsync: Sets up state for creating new events
+    - InitializeForEditAsync: Prepares state for editing existing events
+    - SaveFormAsync: Manual save trigger with clean state marking
+    - ResetEventFormAsync: Cleanup and state reset with draft removal
+    - Dispose: Proper timer cleanup and resource management
+    
+    Dependencies:
+    - IJSRuntime: Browser localStorage access for persistence
+    - System.Timers.Timer: Auto-save functionality
+    - System.Text.Json: Serialization for storage operations
+    - Implements IHybridEventStateService and IDisposable interfaces
+    
+    Usage: Injected as singleton into event-related components to provide consistent
+    state management, draft persistence, and statistics caching throughout the EventEase application.
+*/
+
+using Microsoft.JSInterop;
+using System.Text.Json;
+using System.Timers;
+
+namespace BlazorFinalProject.Services;
+
+public class HybridEventStateService : IHybridEventStateService, IDisposable
+{
+    // ... rest of the implementation ...
+````
+
+The summary comment block describes:
+- **Purpose**: What the service accomplishes (centralized event form state with persistence)
+- **Core Features**: Key functionality including auto-save and statistics caching
+- **State Management**: Properties managed and their purposes
+- **Auto-Save Features**: How automatic persistence works
+- **Storage Strategy**: Keys and persistence approach
+- **Thread Safety**: Synchronization mechanisms for concurrent access
+- **Lifecycle Management**: Methods for managing form state lifecycle
+- **Dependencies**: Required services and interfaces
+- **Usage**: How the service integrates as a singleton across the application
+
+This documentation helps developers understand the hybrid event state service's comprehensive role in managing event form state with automatic persistence and cross-component coordination.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Services/HybridRegistrationStateService.cs`]HybridRegistrationStateService.cs ) file with a summary comment block added at the top:
+
+````csharp
+/*
+    HybridRegistrationStateService Implementation
+    
+    Purpose: Provides centralized state management for registration forms with automatic persistence to browser 
+    localStorage, ensuring data integrity and preventing data loss during registration creation and editing operations.
+    
+    Core Features:
+    - Registration form state management with thread-safe access
+    - Automatic draft saving with configurable intervals (1 second)
+    - Separate storage for new registrations vs. editing existing registrations
+    - Cross-component state sharing for registration operations
+    - Pagination state preservation per event across navigation
+    - Edit mode detection for form behavior customization
+    
+    State Management:
+    - CurrentRegistrationForm: Thread-safe access to current form data
+    - IsFormDirty: Tracks unsaved changes to prevent data loss
+    - IsEditing: Distinguishes between create and edit modes
+    - CurrentRegistrationPageSizes: Maintains pagination preferences per event
+    
+    Auto-Save Features:
+    - Timer-based automatic saving every 1000ms when form is dirty
+    - Separate storage keys for new vs. edit scenarios
+    - Draft recovery on form initialization
+    - Graceful error handling for storage failures
+    
+    Storage Strategy:
+    - NewRegistrationDraftKey: "registrationForm_newDraft" for new registration drafts
+    - EditRegistrationDraftPrefix: "registrationForm_edit_" + RegistrationId for edit drafts
+    - JSON serialization for browser localStorage compatibility
+    - Automatic cleanup of drafts when forms are reset
+    
+    Thread Safety:
+    - Lock-based synchronization for concurrent access protection
+    - Safe property access across multiple components
+    - Thread-safe timer operations for auto-save functionality
+    
+    Lifecycle Management:
+    - InitializeForNewRegistrationAsync: Sets up state for creating new registrations
+    - InitializeForEditRegistrationAsync: Prepares state for editing existing registrations
+    - SaveRegistrationFormAsync: Manual save trigger with clean state marking
+    - ResetRegistrationFormAsync: Cleanup and state reset with draft removal
+    - Dispose: Proper timer cleanup and resource management
+    
+    Dependencies:
+    - IJSRuntime: Browser localStorage access for persistence
+    - ILogger<HybridRegistrationStateService>: Structured logging for monitoring
+    - System.Timers.Timer: Auto-save functionality
+    - System.Text.Json: Serialization for storage operations
+    - Implements IHybridRegistrationStateService and IDisposable interfaces
+    
+    Usage: Injected into registration-related components to provide consistent
+    state management, draft persistence, and pagination across the EventEase application.
+*/
+
+using Microsoft.JSInterop;
+using System.Text.Json;
+using System.Timers;
+using BlazorFinalProject.Models;
+
+namespace BlazorFinalProject.Services;
+
+public class HybridRegistrationStateService : IHybridRegistrationStateService, IDisposable
+{
+    // ... rest of the implementation ...
+````
+
+The summary comment block describes:
+- **Purpose**: What the service accomplishes (centralized registration form state with persistence)
+- **Core Features**: Key functionality including auto-save and edit mode detection
+- **State Management**: Properties managed and their purposes
+- **Auto-Save Features**: How automatic persistence works
+- **Storage Strategy**: Keys and persistence approach for different scenarios
+- **Thread Safety**: Synchronization mechanisms for concurrent access
+- **Lifecycle Management**: Methods for managing registration form state lifecycle
+- **Dependencies**: Required services and interfaces
+- **Usage**: How the service integrates with registration components
+
+This documentation helps developers understand the hybrid registration state service's comprehensive role in managing registration form state with automatic persistence and cross-component coordination.
+
+dotnetmurf: Can you please add a summary comment block at the top of this file describing its purpose?
+
+GitHub Copilot: Here's the [`Services/RegistrationService.cs`]RegistrationService.cs ) file with a summary comment block added at the top:
+
+````csharp
+/*
+    RegistrationService Implementation
+    
+    Purpose: Provides registration data management operations for the EventEase application using browser 
+    local storage as the persistence layer, implementing the IRegistrationService interface contract.
+    
+    Core Operations:
+    - GetAllAsync: Retrieves all registrations from local storage
+    - GetByIdAsync: Fetches specific registration by ID with exception handling for missing entities
+    - AddAsync: Creates new registrations with automatic GUID generation and validation
+    - UpdateAsync: Modifies existing registrations with comprehensive property updates
+    - DeleteAsync: Removes registrations from the data store by ID
+    
+    Event-Specific Operations:
+    - GetAllForEventAsync: Retrieves all registrations for a specific event
+    - GetPagedForEventAsync: Paginated registrations for a specific event with cancellation support
+    - GetRegistrationCountForEventAsync: Gets total registration count for an event
+    - GetAttendedRegistrationsForEventAsync: Retrieves only attended registrations for an event
+    - IsUserRegisteredForEventAsync: Checks if a user is already registered for an event
+    
+    Advanced Operations:
+    - GetPagedAsync: Provides paginated registration retrieval with configurable page sizes
+    - TryGetByIdAsync: Safe registration retrieval returning null for missing entities
+    - ExistsAsync: Efficient existence checking without full entity retrieval
+    
+    Storage Management:
+    - Uses browser localStorage through ILocalStorageService abstraction
+    - RegistrationsKey: "registrations" - primary storage key for registration data
+    - JSON serialization for browser compatibility and data persistence
+    
+    Data Integrity:
+    - Input validation: Validates required fields, non-empty GUIDs, and business rules
+    - Duplicate prevention: Checks for existing registrations by email per event
+    - Automatic GUID generation for new registrations
+    - Attendance tracking support with boolean flags
+    
+    Error Handling:
+    - Comprehensive logging for all operations (success, warnings, errors)
+    - Exception propagation with context-specific error messages
+    - Graceful degradation for storage access failures
+    - Validation exceptions for invalid input parameters
+    
+    Configuration:
+    - DefaultPageSize: 10 items per page for pagination
+    - MaxPageSize: 100 items maximum page size limit
+    - Configurable page size validation and normalization
+    
+    Dependencies:
+    - ILocalStorageService: Browser storage abstraction for data persistence
+    - ILogger<RegistrationService>: Structured logging for monitoring and debugging
+    - Implements IRegistrationService interface for dependency injection
+    
+    Usage: Injected into components and pages throughout the EventEase application
+    to provide reliable registration data management with local storage persistence,
+    supporting event participation tracking and attendee management operations.
+*/
+
+namespace BlazorFinalProject.Services;
+
+public class RegistrationService : IRegistrationService
+{
+    private readonly ILocalStorageService _localStorage;
+    private readonly ILogger<RegistrationService> _logger;
+
+    private const string RegistrationsKey = "registrations";
+    private const int DefaultPageSize = 10;
+    private const int MaxPageSize = 100;
+
+    // ... rest of the implementation ...
+````
+
+The summary comment block describes:
+- **Purpose**: What the service accomplishes (registration data management with localStorage)
+- **Core Operations**: Basic CRUD operations with their specific behaviors
+- **Event-Specific Operations**: Event-focused queries and specialized operations
+- **Advanced Operations**: Additional methods for pagination and safe access
+- **Storage Management**: How data is persisted and managed in browser storage
+- **Data Integrity**: Validation, duplicate prevention, and data consistency measures
+- **Error Handling**: Comprehensive logging and exception management approach
+- **Configuration**: Constants and configurable limits
+- **Dependencies**: Required services and interfaces
+- **Usage**: How the service supports registration and attendee management
+
+This documentation helps developers understand the RegistrationService's role as the primary data access layer for registrations, providing comprehensive event participation tracking with browser storage persistence.

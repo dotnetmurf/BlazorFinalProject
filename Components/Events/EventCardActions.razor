@@ -1,0 +1,70 @@
+@*
+    EventCardActions Component
+    
+    Purpose: Provides action buttons for event card operations including view details, edit, and delete functionality.
+    
+    Features:
+    - View Details button (left-aligned) - navigates to event details page
+    - Edit and Delete buttons (right-aligned) - triggers parent component callbacks
+    - Bootstrap flex layout with responsive button positioning
+    - Event parameter passing to parent components through callbacks
+    - Conditional callback execution with delegate checking
+    
+    Button Layout:
+    - Left side: Primary "View Details" button with eye icon
+    - Right side: Secondary "Edit" and danger "Delete" buttons grouped together
+    
+    Dependencies:
+    - Event model for data binding
+    - EventStatistics for statistical information
+    - EventCallback delegates for parent component communication
+    
+    Usage: Embedded in EventCard component footer to provide standardized event actions.
+*@
+
+<div class="d-flex justify-content-between">
+    <button class="btn btn-primary" @onclick="OnNavigateToDetails">
+        <i class="fas fa-eye me-2"></i>
+        View Details
+    </button>
+    <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-secondary" @onclick="OnEditEventClick">Edit</button>
+        <button class="btn btn-sm btn-danger" @onclick="OnDeleteEventClick">Delete</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Event Event { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventStatistics Statistics { get; set; } = default!;
+
+    [Parameter]
+    public string DetailsPageUri { get; set; } = "events/details";
+
+    [Parameter]
+    public EventCallback OnNavigateToDetails { get; set; }
+
+    [Parameter]
+    public EventCallback<Event> OnEditEvent { get; set; }
+
+    [Parameter]
+    public EventCallback<Event> OnDeleteEvent { get; set; }
+
+    private async Task OnEditEventClick()
+    {
+        if (OnEditEvent.HasDelegate)
+        {
+            await OnEditEvent.InvokeAsync(Event);
+        }
+    }
+
+    private async Task OnDeleteEventClick()
+    {
+        if (OnDeleteEvent.HasDelegate)
+        {
+            await OnDeleteEvent.InvokeAsync(Event);
+        }
+    }
+}

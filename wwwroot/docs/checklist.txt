@@ -1,0 +1,81 @@
+Here you go, Kevin—a printable, step-by-step checklist version of your **Event Manager Blazor WASM Application Roadmap**. I’ve grouped it by phase so you can track your progress at a glance and keep your workflow tidy and modular.
+
+---
+
+### Phase 1: Project Initialization & Planning
+- [X] Create Blazor WASM app using `dotnet new blazorwasm`
+- [X] Add Git repo, .editorconfig, and VS Code workspace files
+- [X] Define `Event.cs` and `Registration.cs` models
+- [X] Create folders: `Models/`, `Services/`, `Pages/`, `Components/Events/`, `Components/Registrations/`, `Components/Shared/`
+
+---
+
+### Phase 2: Mock Infrastructure & Services
+- [X] Create `IEventService` and implement `MockEventService`
+- [X] Create `IRegistrationService` and implement `MockRegistrationService`
+- [X] Register both services in `Program.cs` with `AddSingleton()`
+
+---
+
+### Phase 3: Event Management UI
+- [X] Build `EventCard.razor` to display event summaries
+- [X] Build `EventForm.razor` for event creation and editing
+- [X] Create reusable `ModalDialog.razor` for confirmations
+- [X] Scaffold `EventsPage.razor` with add/edit/delete functionality
+
+---
+
+### Phase 4: Event Details & Participant Flow
+- [X] Scaffold `EventDetailsPage.razor` to show event + participants
+- [X] Build `RegistrationForm.razor` with full validation
+- [X] Build `RegistrationCard.razor` for displaying registrant details
+
+---
+
+### Phase 5: UI Styling & Navigation
+- [X] Style components using Bootstrap 5 classes
+- [X] Add component-scoped CSS as needed
+- [X] Configure navigation with `NavMenu.razor` and `App.razor`
+
+---
+
+### Phase 6: Final Polish & Demo
+- [X] Seed realistic sample data in mock services
+- [X] Test full CRUD: events and registrations
+- [X] Handle empty states and validation errors
+- [X] Implement state management to track user sessions
+- [X] Implement an Attendance Tracker to monitor event participation
+- [X] Test in Firefox, Edge, and Chrome
+- [X] Deploy to GitHub Pages, Amazon Web Services S3, or Azure Static Web Apps (optional)
+
+---
+
+### Phase 7: Fix Testing Bugs and Style Issues
+- [X] Cannot save edited event if date past today's date
+- [X] LazyLoad always compresses Events/Registration Lists after return from selected event/registration record;
+        no validation error shown for past event on such an update
+- [X] Fix the missing Bootstrap icon:
+        <span class="bi bi-file-earmark-person-fill-nav-menu" aria-hidden="true"></span> User Manual
+- [X] Move Edit and Delete buttons from EventsPage to EventCardActions
+- [X] Add a Reset Form button to EventForm and RegistrationForm
+- [X] Change transcript documents from .pdf to .txt
+- [X] Modify CCS size for tags <h1> through <h6>
+- [X] Modify CCS color for tags <h1> through <h6>
+- [X] Modify CCS color for <a> tags
+- [X] Change card color from warning to secondary
+- [X] Increase visibility of Help buttons
+- [X] Create scoped CSS files as needed
+- [X] Remove icons from documents
+- [X] Standardize protected override async Task OnAfterRenderAsync(bool firstRender)
+- [X] Fix Build succeeded with [nn] warning(s) messages
+- [X] Add link to GitHub repo to About page
+- [X] Test <a> tag in README.md page
+- [X] Remove icons from README.md page
+- [X] Remove inline comments from code files
+- [X] Add file summary comments to code files
+- [X] Update formatting in code files
+- [X] Delete unused artifacts from the project
+
+---
+
+Let me know if you’d like this formatted as a downloadable `.md` file or in Word/PDF style for presentation—or if you’d like to build out a matching roadmap for feature enhancements after the prototype phase.

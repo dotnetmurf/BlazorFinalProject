@@ -1,0 +1,278 @@
+@*
+    EventForm Component
+    
+    Purpose: Provides a comprehensive form interface for creating and editing events with validation, 
+    state management, and user feedback capabilities.
+    
+    Features:
+    - Create new events or edit existing events
+    - Form validation with DataAnnotations and ValidationSummary
+    - Error handling and user-friendly error messages
+    - Form state management with dirty tracking and auto-save
+    - Reset form functionality to clear all fields
+    - Loading states with button disabling during submission
+    - Responsive Bootstrap layout with proper field organization
+    
+    Form Fields:
+    - Event Name (required) - Text input with placeholder
+    - Event Date (required) - Date picker input
+    - Location (required) - Text input with placeholder
+    - Notes (optional) - Multi-line textarea
+    
+    Actions:
+    - Save/Update - Validates and saves event data
+    - Reset Form - Clears all fields and resets state
+    - Cancel - Closes form without saving changes
+    
+    Dependencies:
+    - IHybridEventStateService: For form state management and persistence
+    - IEventService: For CRUD operations on events
+    - ILogger: For logging form operations and errors
+    - Event model for data binding
+    - Bootstrap classes for styling and layout
+    
+    Usage: Used in EventsPage for both creating new events and editing existing ones.
+*@
+
+@inject IHybridEventStateService EventState
+@inject IEventService EventService
+@inject ILogger<EventForm> Logger
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">@FormTitle</h5>
+    </div>
+    <div class="card-body">
+        <EditForm Model="EventState.CurrentEventForm" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+
+            @if (HasValidationErrors)
+            {
+                <div class="alert alert-danger">
+                    <ValidationSummary />
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    @ErrorMessage
+                </div>
+            }
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="name" class="form-label required">Event Name</label>
+                        <InputText id="name" class="form-control" @bind-Value="EventState.CurrentEventForm.Name"
+                            @bind-Value:after="MarkAsDirty" placeholder="Enter the event name"
+                            disabled="@IsSubmitting" />
+                        <ValidationMessage For="@(() => EventState.CurrentEventForm.Name)" />
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="date" class="form-label required">Event Date</label>
+                        <InputDate id="date" class="form-control" @bind-Value="EventState.CurrentEventForm.Date"
+                            @bind-Value:after="MarkAsDirty" disabled="@IsSubmitting" />
+                        <ValidationMessage For="@(() => EventState.CurrentEventForm.Date)" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="location" class="form-label required">Location</label>
+                <InputText id="location" class="form-control" @bind-Value="EventState.CurrentEventForm.Location"
+                    @bind-Value:after="MarkAsDirty" placeholder="Enter the event location" disabled="@IsSubmitting" />
+                <ValidationMessage For="@(() => EventState.CurrentEventForm.Location)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <InputTextArea id="notes" class="form-control" @bind-Value="EventState.CurrentEventForm.Notes"
+                    @bind-Value:after="MarkAsDirty" rows="3" placeholder="Additional notes (optional)"
+                    disabled="@IsSubmitting" />
+                <ValidationMessage For="@(() => EventState.CurrentEventForm.Notes)" />
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <div>
+                    <button type="submit" class="btn btn-success me-2" disabled="@IsSubmitting">
+                        @if (IsSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        else
+                        {
+                            <i class="fas fa-save me-2"></i>
+                        }
+                        @SaveButtonText
+                    </button>
+
+                    <button type="button" class="btn btn-warning me-2" @onclick="ResetFormAsync"
+                        disabled="@IsSubmitting">
+                        <i class="fas fa-undo me-2"></i>
+                        Reset Form
+                    </button>
+
+                    <button type="button" class="btn btn-secondary" @onclick="CancelAsync" disabled="@IsSubmitting">
+                        <i class="fas fa-times me-2"></i>
+                        Cancel
+                    </button>
+                </div>
+
+                @if (EventState.IsFormDirty)
+                {
+                    <small class="text-warning align-self-center">
+                        <i class="fas fa-exclamation-circle me-1"></i>
+                        Unsaved changes
+                    </small>
+                }
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Event Event { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<Event> OnValidSubmitCallback { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelCallback { get; set; }
+
+    [Parameter]
+    public string FormTitle { get; set; } = "Event Details";
+
+    private bool IsSubmitting { get; set; }
+    private string ErrorMessage { get; set; } = string.Empty;
+    private bool HasValidationErrors { get; set; }
+
+    private string SaveButtonText => IsEditMode ? "Update Event" : "Create Event";
+    private bool IsEditMode => Event?.Id != Guid.Empty;
+
+    protected override void OnParametersSet()
+    {
+        ErrorMessage = string.Empty;
+        HasValidationErrors = false;
+    }
+
+    private void MarkAsDirty()
+    {
+        EventState.MarkFormDirty();
+        ErrorMessage = string.Empty;
+    }
+
+
+    private async Task ResetFormAsync()
+    {
+        if (IsSubmitting) return;
+
+        try
+        {
+            ErrorMessage = string.Empty;
+            HasValidationErrors = false;
+
+            await EventState.ResetEventFormAsync();
+
+            await EventState.InitializeForNewEventAsync();
+
+            Event = new Event();
+
+            StateHasChanged();
+
+            Logger.LogInformation("Event form and state completely reset to new event state");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "An error occurred while resetting the form.";
+            Logger.LogError(ex, "Error resetting event form and state");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (IsSubmitting) return;
+
+        IsSubmitting = true;
+        ErrorMessage = string.Empty;
+        HasValidationErrors = false;
+
+        try
+        {
+            var eventToSave = CreateEventFromForm();
+            var savedEvent = await SaveEventAsync(eventToSave);
+
+            await EventState.ResetEventFormAsync();
+            await OnValidSubmitCallback.InvokeAsync(savedEvent);
+        }
+        catch (ValidationException ex)
+        {
+            ErrorMessage = ex.Message;
+            HasValidationErrors = true;
+            Logger.LogWarning("Validation error saving event: {Message}", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "An error occurred while saving the event. Please try again.";
+            Logger.LogError(ex, "Error saving event with ID: {EventId}", Event?.Id);
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+
+    private Event CreateEventFromForm()
+    {
+        return new Event
+        {
+            Id = EventState.CurrentEventForm.Id,
+            Name = EventState.CurrentEventForm.Name?.Trim() ?? string.Empty,
+            Date = EventState.CurrentEventForm.Date,
+            Location = EventState.CurrentEventForm.Location?.Trim() ?? string.Empty,
+            Notes = EventState.CurrentEventForm.Notes?.Trim() ?? string.Empty
+        };
+    }
+
+    private async Task<Event> SaveEventAsync(Event eventToSave)
+    {
+        if (eventToSave.Id == Guid.Empty)
+        {
+            var createdEvent = await EventService.AddAsync(eventToSave);
+            Logger.LogInformation("Created new event with ID: {EventId}", createdEvent.Id);
+            return createdEvent;
+        }
+        else
+        {
+            var updatedEvent = await EventService.UpdateAsync(eventToSave);
+            Logger.LogInformation("Updated event with ID: {EventId}", updatedEvent.Id);
+
+            var verifiedEvent = await EventService.GetByIdAsync(eventToSave.Id);
+            if (verifiedEvent == null)
+            {
+                throw new InvalidOperationException($"Event with ID {eventToSave.Id} not found after update");
+            }
+
+            return verifiedEvent;
+        }
+    }
+
+    private async Task CancelAsync()
+    {
+        if (IsSubmitting) return;
+
+        try
+        {
+            await OnCancelCallback.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during cancel operation");
+        }
+    }
+}

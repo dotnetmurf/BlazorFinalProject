@@ -1,0 +1,98 @@
+/*
+    Attendance Page Styles
+    
+    Purpose: Provides responsive styling for the Attendance page, transforming tabular event data 
+    into mobile-friendly card layouts for optimal viewing across all device sizes.
+    
+    Responsive Features:
+    - Mobile-first design with breakpoint at 991.98px (Bootstrap lg breakpoint)
+    - Table-to-card transformation for mobile devices
+    - Automatic data label generation using CSS pseudo-elements
+    - Optimized spacing and typography for touch interfaces
+    
+    Mobile Layout (max-width: 991.98px):
+    - Hides table headers and converts rows to individual cards
+    - Each table row becomes a standalone card with border and shadow
+    - Table cells display as block elements with generated labels
+    - Responsive badge and button positioning
+    - Enhanced touch targets for mobile interaction
+    
+    Card Styling:
+    - Bootstrap-consistent border radius (0.375rem)
+    - Subtle box shadow for depth (0.125rem 0.25rem)
+    - Standard border color (#dee2e6) and background (#fff)
+    - Proper spacing between cards (1rem margin-bottom)
+    
+    Data Label System:
+    - Uses data-label attributes to generate field labels on mobile
+    - Bold labels (#6c757d color) for clear data hierarchy
+    - Consistent spacing between labels and values
+    - Maintains semantic structure without JavaScript
+    
+    Element Adjustments:
+    - Badge positioning optimized for mobile layout
+    - Button styling adapted for touch interfaces
+    - Footer statistics cards with responsive spacing
+    - Proper text alignment overrides for mobile display
+    
+    Usage: Automatically applied to Attendance.razor component to ensure optimal
+    user experience across desktop and mobile devices for attendance reporting.
+*/
+
+@media (max-width: 991.98px) {
+    .table-responsive {
+        border: none;
+    }
+
+    .table-responsive .table {
+        border: none;
+    }
+
+    .table-responsive .table thead {
+        display: none;
+    }
+
+    .table-responsive .table tbody tr {
+        display: block;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        background-color: #fff;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .table-responsive .table tbody td {
+        display: block;
+        text-align: left !important;
+        border: none;
+        padding: 0.5rem 0;
+        position: relative;
+        padding-left: 0 !important;
+    }
+
+    .table-responsive .table tbody td:before {
+        content: attr(data-label);
+        display: block;
+        font-weight: 600;
+        color: #6c757d;
+        margin-bottom: 0.25rem;
+    }
+
+    .table-responsive .table tbody td .badge {
+        margin-left: 0;
+    }
+
+    .table-responsive .table tbody td .btn {
+        margin-left: 0;
+        margin-top: 0.25rem;
+    }
+
+    .card-footer .row .col-md-3 {
+        margin-bottom: 1rem;
+    }
+
+    .card-footer .row .col-md-3:last-child {
+        margin-bottom: 0;
+    }
+}

@@ -1,0 +1,326 @@
+@*
+    About Page Component
+    
+    Purpose: Provides comprehensive project documentation and information about the EventEase application,
+    including development methodology, technical requirements, and Microsoft Copilot integration details.
+    
+    Features:
+    - Complete project overview with academic context and objectives
+    - Table of contents with anchor navigation for easy section access
+    - Microsoft Copilot conversation transcript links for development transparency
+    - Technical requirements and architecture documentation
+    - Learning outcomes and educational objectives demonstration
+    - Project evolution timeline showing progressive development phases
+    - Development methodology explanation emphasizing AI-assisted development
+    - Responsive design with mobile-friendly navigation
+    
+    Content Sections:
+    - Project Overview: Application purpose and academic context
+    - Copilot Transcripts: Links to development conversation documents
+    - Project Objectives: Core functionality and user capabilities
+    - Technical Requirements: Technologies, frameworks, and components used
+    - Copilot Integration: AI-assisted development methodology details
+    - Learning Outcomes: Skills and competencies demonstrated
+    - Project Evolution: Development phases and progressive enhancement
+    - Development Methodology: AI-first approach and best practices
+    - Conclusion: Summary of achievements and learning journey
+    
+    Navigation Features:
+    - Anchor-based internal navigation between sections
+    - "Back to Top" buttons for improved user experience
+    - External links to documentation files and GitHub repository
+    - Responsive layout adapting to different screen sizes
+    
+    Dependencies:
+    - IJSRuntime: For scroll management and DOM manipulation
+    - External documentation files in /docs/ directory
+    - Bootstrap styling for responsive layout and components
+    
+    Usage: Accessed via `/about` route to provide comprehensive project information
+    for academic evaluation, portfolio demonstration, and development transparency.
+*@
+
+@page "/about"
+@inject IJSRuntime JSRuntime
+
+<PageTitle>About | Events Manager</PageTitle>
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4" id="top">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2">
+                        EventEase - Blazor Front-End Development Final Project
+                    </h1>
+                    <p class="text-muted mb-0">Microsoft Copilot-Assisted Development Journey</p>
+                    <small class="text-muted">Version 1.0 | July 2025</small><br>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table of Contents -->
+    <section id="table-of-contents" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-3">Table of Contents</h2>
+        <ul>
+            <li><a href="about/#project-overview">Project Overview</a></li>
+            <li><a href="about/#copilot-transcripts">Microsoft Copilot Conversation Transcripts</a></li>
+            <li><a href="about/#project-objectives">Project Objectives</a></li>
+            <li><a href="about/#technical-requirements">Technical Requirements</a></li>
+            <li><a href="about/#copilot-integration">Microsoft Copilot Integration</a></li>
+            <li><a href="about/#learning-outcomes">Learning Outcomes Demonstrated</a></li>
+            <li><a href="about/#project-evolution">Project Evolution</a></li>
+            <li><a href="about/#development-methodology">Development Methodology</a></li>
+            <li><a href="about/#conclusion">Conclusion</a></li>
+        </ul>
+    </section>
+
+    <!-- Project Overview -->
+    <section id="project-overview" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-3">Project Overview</h2>
+        <p>
+            EventEase is a comprehensive event management web application developed as a three-part final project for
+            the
+            <a href="https://www.coursera.org/learn/blazor-pages-for-front-end-development?specialization=microsoft-full-stack-developer"
+                target="_blank">"Blazor for Front-End Development"</a>
+            course. This project demonstrates proficiency in using Microsoft Copilot to accelerate
+            Blazor WebAssembly development, from initial component generation through debugging,
+            optimization, and advanced feature implementation. The project requirements can be viewed <a
+                href="docs/project-requirements.txt" target="_blank">here</a>.
+        </p>
+        <p>The GitHub repository for this project can be found <a href="https://github.com/dotnetmurf/BlazorFinalProject" target="_blank">here</a>.</p>
+        <p>An AI-generated tutorial of this application, based on the GitHub repo, can be viewed
+            <a href="docs/ai-tutorial.txt" target="_blank">here</a>
+            (provided courtesy of <a href="https://code2tutorial.com/" target="_blank">Codebase to Tutorial</a>).</p>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="mb-4">
+        <button class="btn btn-outline-primary btn-sm" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- Microsoft Copilot Conversation Transcripts -->
+    <section id="copilot-transcripts" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-3">Microsoft Copilot Conversation Transcripts</h2>
+        <p class="mb-3">
+            A key requirement of this project was to use Microsoft Copilot for all phases of its development. Throughout
+            these phases, transcripts of the conversations with Copilot were saved as text files. These conversations
+            are
+            listed below (selecting a link will open a .txt file in a new window):
+        </p>
+        <ul>
+            <li><a href="docs/ai-project-planning.txt" target="_blank">Copilot AI: Project Planning</a></li>
+            <li><a href="docs/ai-localstorage.txt" target="_blank">Copilot AI: Local Storage Implementation</a></li>
+            <li><a href="docs/ai-troubleshoot-registrationcard-code.txt" target="_blank">Copilot AI: Troubleshooting
+                    RegistrationCard.cs
+                    Code</a></li>
+            <li><a href="docs/ai-refine-mock-data.txt" target="_blank">Copilot AI: Refine Mock Data</a></li>
+            <li><a href="docs/ai-add-bootstrap-icons.txt" target="_blank">Copilot AI: Add Bootstrap Icons</a></li>
+            <li><a href="docs/ai-page-content.txt" target="_blank">Copilot AI: Create Page Content</a></li>
+            <li><a href="docs/ai-create-attendance-page.txt" target="_blank">Copilot AI: Create Attendance Page</a>
+            </li>
+            <li><a href="docs/ai-add-page-help.txt" target="_blank">Copilot AI: Create Help Page Functionality for Data
+                    Content Pages</a></li>
+            <li><a href="docs/ai-add-scoped-css.txt" target="_blank">Copilot AI: Create Scoped CSS for the Attendance
+                    Page</a></li>
+            <li><a href="docs/ai-optimize-eventspage.txt" target="_blank">Copilot AI: Optimize Events Page
+                    Performance</a></li>
+            <li><a href="docs/ai-hybridstateservice.txt" target="_blank">Copilot AI: Creating and Debugging the State
+                    Services</a></li>
+            <li><a href="docs/ai-refactor-components.txt" target="_blank">Copilot AI: Refactor Components for Best
+                    Practices</a></li>
+            <li><a href="docs/ai-refactor-services.txt" target="_blank">Copilot AI: Refactor Services for Best
+                    Practices</a></li>
+            <li><a href="docs/ai-create-documentation.txt" target="_blank">Copilot AI: Create Documentation for the
+                    Project</a></li>
+            <li><a href="docs/ai-create-code-comments.txt" target="_blank">Copilot AI: Create Code Comments for the
+                    Project</a></li>
+        </ul>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="mb-4">
+        <button class="btn btn-outline-primary btn-sm" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- Project Objectives -->
+    <section id="project-objectives" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-3">Project Objectives</h2>
+        <p class="mb-3">The EventEase application serves a fictional corporate and social event management company,
+            providing users with the ability to:</p>
+        <ul>
+            <li><strong>Browse Events</strong> - View event details including name, date, and location</li>
+            <li><strong>Navigate Seamlessly</strong> - Move between event listings, details, and registration pages</li>
+            <li><strong>Manage Registrations</strong> - Handle attendee registration and tracking</li>
+            <li><strong>Monitor Attendance</strong> - Track event participation and user sessions</li>
+        </ul>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="mb-4">
+        <button class="btn btn-outline-primary btn-sm" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- Technical Requirements -->
+    <section id="technical-requirements" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-3">Technical Requirements</h2>
+
+        <h4 class="mb-3">Core Technologies</h4>
+        <ul class="mb-4">
+            <li><strong>Frontend Framework:</strong> Blazor WebAssembly (.NET 9.0)</li>
+            <li><strong>Development Tool:</strong> Microsoft Copilot (Primary code generation and assistance)</li>
+            <li><strong>UI Framework:</strong> Bootstrap 5.3 with responsive design</li>
+            <li><strong>Development Environment:</strong> Visual Studio Code with C# Dev Kit</li>
+        </ul>
+
+        <h4 class="mb-3">Key Components Developed</h4>
+        <ul>
+            <li><strong>Event Card Component</strong> - Displays event information with data binding</li>
+            <li><strong>Registration Form</strong> - User input with validation and error handling</li>
+            <li><strong>Routing System</strong> - Navigation between application pages</li>
+            <li><strong>State Management Service</strong> - Session and data persistence</li>
+            <li><strong>Attendance Tracking</strong> - Participation monitoring system</li>
+        </ul>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="mb-4">
+        <button class="btn btn-outline-primary btn-sm" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- Microsoft Copilot Integration -->
+    <section id="copilot-integration" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-3">Microsoft Copilot Integration</h2>
+        <p class="mb-3">This project extensively demonstrates the use of Microsoft Copilot throughout the development
+            lifecycle:</p>
+
+        <h4 class="mb-3">Code Generation</h4>
+        <ul class="mb-4">
+            <li><strong>Component Scaffolding</strong> - Automated creation of Blazor components</li>
+            <li><strong>Data Binding Syntax</strong> - AI-suggested binding implementations</li>
+            <li><strong>Routing Configuration</strong> - Generated navigation and routing logic</li>
+        </ul>
+
+        <h4 class="mb-3">Debugging & Optimization</h4>
+        <ul class="mb-4">
+            <li><strong>Bug Identification</strong> - Copilot-assisted issue detection</li>
+            <li><strong>Performance Analysis</strong> - AI-recommended optimization strategies</li>
+            <li><strong>Validation Logic</strong> - Generated input validation and error handling</li>
+        </ul>
+
+        <h4 class="mb-3">Advanced Development</h4>
+        <ul>
+            <li><strong>Form Creation</strong> - AI-assisted complex form development</li>
+            <li><strong>State Management</strong> - Generated service layer architecture</li>
+            <li><strong>Best Practices</strong> - Production-ready code suggestions</li>
+        </ul>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="mb-4">
+        <button class="btn btn-outline-primary btn-sm" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- Learning Outcomes Demonstrated -->
+    <section id="learning-outcomes" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-3">Learning Outcomes Demonstrated</h2>
+        <ul>
+            <li><strong>AI-Assisted Development</strong> - Effective use of Microsoft Copilot for accelerated
+                development</li>
+            <li><strong>Component Architecture</strong> - Building reusable Blazor components</li>
+            <li><strong>Data Binding Mastery</strong> - Implementation of two-way data binding</li>
+            <li><strong>Routing & Navigation</strong> - Creating seamless user experiences</li>
+            <li><strong>Debugging Skills</strong> - Systematic problem identification and resolution</li>
+            <li><strong>Performance Optimization</strong> - Code efficiency and responsiveness</li>
+            <li><strong>Production Readiness</strong> - Deployment preparation and best practices</li>
+        </ul>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="mb-4">
+        <button class="btn btn-outline-primary btn-sm" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- Project Evolution -->
+    <section id="project-evolution" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-3">Project Evolution</h2>
+        <p class="mb-3">The project demonstrates progressive enhancement:</p>
+        <ul>
+            <li><strong>Phase 1:</strong> Basic functionality with Copilot assistance</li>
+            <li><strong>Phase 2:</strong> Robust error handling and performance optimization</li>
+            <li><strong>Phase 3:</strong> Advanced features and production-quality implementation</li>
+        </ul>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="mb-4">
+        <button class="btn btn-outline-primary btn-sm" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- Development Methodology -->
+    <section id="development-methodology" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-3">Development Methodology</h2>
+        <ul>
+            <li><strong>Copilot-First Approach</strong> - Leveraging AI for initial code generation</li>
+            <li><strong>Iterative Refinement</strong> - Continuous improvement through debugging cycles</li>
+            <li><strong>Test-Driven Validation</strong> - Comprehensive testing at each development phase</li>
+            <li><strong>Performance-Conscious Design</strong> - Optimization considerations throughout development</li>
+        </ul>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="mb-4">
+        <button class="btn btn-outline-primary btn-sm" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- Conclusion -->
+    <section id="conclusion" class="mb-5">
+        <h2 class="border-bottom pb-2 mb-3">Conclusion</h2>
+        <p>
+            EventEase represents a complete learning journey in modern Blazor development, showcasing how AI tools like
+            Microsoft Copilot can accelerate development while maintaining code quality and best practices. The project
+            successfully demonstrates the integration of foundational web development skills with cutting-edge
+            AI-assisted programming techniques.
+        </p>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="text-center mb-4">
+        <button class="btn btn-outline-primary" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+</div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+        }
+    }
+
+    private async Task ScrollToTop()
+    {
+        await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+    }
+}

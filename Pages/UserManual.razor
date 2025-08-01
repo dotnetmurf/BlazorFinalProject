@@ -1,0 +1,515 @@
+@*
+    UserManual Page Component
+    
+    Purpose: Provides comprehensive user documentation and step-by-step instructions for using 
+    the EventEase application, serving as the primary help resource for end users.
+    
+    Features:
+    - Complete user guide with detailed instructions for all application features
+    - Interactive accordion-based navigation for organized content sections
+    - Quick navigation menu with anchor links for easy section access
+    - Step-by-step tutorials with visual cues and formatting
+    - Troubleshooting section with common issues and solutions
+    - Frequently Asked Questions (FAQ) for quick answers
+    - Responsive design optimized for desktop and mobile viewing
+    - "Back to Top" buttons throughout for improved navigation
+    
+    Content Sections:
+    - Getting Started: Application overview and initial access instructions
+    - Managing Events: Complete event CRUD operations guide
+    - Managing Registrations: Registration and attendee management instructions
+    - Troubleshooting: Common issues identification and resolution steps
+    - FAQ: Frequently asked questions with concise answers
+    
+    Navigation Features:
+    - Quick navigation card with section links at the top
+    - Accordion-style collapsible sections for organized content
+    - Smooth scrolling to top functionality
+    - Anchor-based navigation between sections
+    - Visual indicators for expanded/collapsed sections
+    
+    Interactive Elements:
+    - Collapsible accordion sections with state management
+    - Scroll-to-top buttons for improved user experience
+    - Color-coded badges and alerts for important information
+    - Bootstrap icons for visual enhancement and clarity
+    
+    User Experience:
+    - Professional layout suitable for business documentation
+    - Clear visual hierarchy with icons and color coding
+    - Comprehensive coverage of all application features
+    - Practical examples and real-world usage scenarios
+    - Warning alerts for important constraints and limitations
+    
+    Dependencies:
+    - IJSRuntime: For scroll management and DOM interactions
+    - Bootstrap: For responsive layout and interactive components
+    - Bootstrap Icons: For visual enhancement and navigation cues
+    
+    Usage: Accessed via `/user-manual` route to provide comprehensive documentation
+    for EventEase application users. Primary help resource for training and support.
+*@
+
+@page "/user-manual"
+@inject IJSRuntime JSRuntime
+
+<PageTitle>User Manual | EventEase</PageTitle>
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4" id="top">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2">
+                        EventEase User Manual
+                    </h1>
+                    <p class="text-muted mb-0">Event Management System - Version 1.0</p>
+                    <small class="text-muted">Last Updated: July 2025</small><br>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Navigation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Quick Navigation</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><a href="user-manual/#getting-started" class="text-decoration-none">📚 Getting Started</a></li>
+                                <li><a href="user-manual/#managing-events" class="text-decoration-none">📅 Managing Events</a></li>
+                                <li><a href="user-manual/#managing-registrations" class="text-decoration-none">👥 Managing Registrations</a></li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><a href="user-manual/#troubleshooting" class="text-decoration-none">🔧 Troubleshooting</a></li>
+                                <li><a href="user-manual/#faq" class="text-decoration-none">❓ Frequently Asked Questions</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Getting Started Section -->
+    <section id="getting-started" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-4">
+            <i class="bi bi-play-circle me-2"></i>Getting Started
+        </h2>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <h4>What is EventEase?</h4>
+                <p class="lead">EventEase is a comprehensive event management application that allows your organization to efficiently create, manage, and track events along with their registrations and attendee information.</p>
+                
+                <h5 class="mt-4">Accessing the System</h5>
+                <ol class="ps-3">
+                    <li>Open your web browser</li>
+                    <li>Navigate to the EventEase application URL</li>
+                    <li>The system will automatically load the Events List page</li>
+                </ol>
+            </div>
+            <div class="col-lg-4">
+                <div class="card bg-light">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-star me-1"></i>Main Features</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">✅ <strong>Event Management</strong><br><small class="text-muted">Create, edit, view, and delete events</small></li>
+                            <li class="mb-2">✅ <strong>Registration Tracking</strong><br><small class="text-muted">Manage attendee registrations</small></li>
+                            <li class="mb-2">✅ <strong>Attendance Monitoring</strong><br><small class="text-muted">Track who actually attended</small></li>
+                            <li class="mb-2">✅ <strong>Sample Data</strong><br><small class="text-muted">Load test data for demonstration</small></li>
+                            <li>✅ <strong>Responsive Design</strong><br><small class="text-muted">Works on all devices</small></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="mb-4">
+        <button class="btn btn-outline-primary btn-sm" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- Managing Events Section -->
+    <section id="managing-events" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-4">
+            <i class="bi bi-calendar-event me-2"></i>Managing Events
+        </h2>
+
+        <div class="accordion" id="eventsAccordion">
+            <!-- Viewing Events -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="@GetButtonClass("viewingEvents")" type="button" @onclick="@(() => ToggleAccordion("viewingEvents"))">
+                        <i class="bi bi-eye me-2"></i>Viewing Events
+                    </button>
+                </h2>
+                <div class="@GetCollapseClass("viewingEvents")">
+                    <div class="accordion-body">
+                        <p>When you first access EventEase, you'll see the <strong>Events List</strong> page displaying:</p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul>
+                                    <li><strong>Event cards</strong> showing key information</li>
+                                    <li><strong>Statistics</strong> for each event</li>
+                                    <li><strong>Action buttons</strong> (Edit, Delete, View Details)</li>
+                                    <li><strong>Pagination</strong> showing events in groups of 4</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-info">
+                                    <h6><i class="bi bi-info-circle me-1"></i>Event Card Information</h6>
+                                    <small>
+                                        📅 Event Name & Date<br>
+                                        📍 Location<br>
+                                        👥 Registration Count<br>
+                                        ✅ Attendee Count<br>
+                                        📝 Notes (if provided)
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Creating Events -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="@GetButtonClass("creatingEvents")" type="button" @onclick="@(() => ToggleAccordion("creatingEvents"))">
+                        <i class="bi bi-plus-circle me-2"></i>Creating a New Event
+                    </button>
+                </h2>
+                <div class="@GetCollapseClass("creatingEvents")">
+                    <div class="accordion-body">
+                        <ol>
+                            <li><strong>Click</strong> the <span class="badge bg-success">Add New Event</span> button</li>
+                            <li><strong>Fill in the required fields:</strong>
+                                <ul class="mt-2">
+                                    <li><strong>Event Name*</strong> (required) - Enter a descriptive name</li>
+                                    <li><strong>Event Date*</strong> (required) - Select the event date</li>
+                                    <li><strong>Location*</strong> (required) - Enter the venue or location</li>
+                                    <li><strong>Notes</strong> (optional) - Add any additional information</li>
+                                </ul>
+                            </li>
+                            <li><strong>Click</strong> <span class="badge bg-success">Create Event</span> to save</li>
+                            <li><strong>Click</strong> <span class="badge bg-secondary">Cancel</span> to discard changes</li>
+                        </ol>
+                        
+                        <div class="alert alert-warning mt-3">
+                            <h6><i class="bi bi-exclamation-triangle me-1"></i>Important Notes:</h6>
+                            <ul class="mb-0">
+                                <li>Fields marked with * are required</li>
+                                <li>Event dates cannot be set in the past</li>
+                                <li>Event names are limited to 100 characters</li>
+                                <li>Locations are limited to 200 characters</li>
+                                <li>Notes are limited to 500 characters</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Editing Events -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="@GetButtonClass("editingEvents")" type="button" @onclick="@(() => ToggleAccordion("editingEvents"))">
+                        <i class="bi bi-pencil me-2"></i>Editing an Event
+                    </button>
+                </h2>
+                <div class="@GetCollapseClass("editingEvents")">
+                    <div class="accordion-body">
+                        <ol>
+                            <li><strong>Find the event</strong> you want to edit in the Events List</li>
+                            <li><strong>Click</strong> the <span class="badge bg-primary">Edit</span> button on the event card</li>
+                            <li><strong>Modify</strong> the fields as needed</li>
+                            <li><strong>Click</strong> <span class="badge bg-success">Update Event</span> to save changes</li>
+                            <li><strong>Click</strong> <span class="badge bg-secondary">Cancel</span> to discard changes</li>
+                        </ol>
+                        
+                        <div class="alert alert-info mt-3">
+                            <i class="bi bi-lightbulb me-1"></i><strong>Pro Tip:</strong> The form will show "Unsaved changes" if you've modified any fields but haven't saved yet.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deleting Events -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="@GetButtonClass("deletingEvents")" type="button" @onclick="@(() => ToggleAccordion("deletingEvents"))">
+                        <i class="bi bi-trash me-2"></i>Deleting an Event
+                    </button>
+                </h2>
+                <div class="@GetCollapseClass("deletingEvents")">
+                    <div class="accordion-body">
+                        <ol>
+                            <li><strong>Find the event</strong> you want to delete</li>
+                            <li><strong>Click</strong> the <span class="badge bg-danger">Delete</span> button on the event card</li>
+                            <li><strong>Review the confirmation dialog</strong></li>
+                            <li><strong>Click</strong> <span class="badge bg-danger">Delete Event</span> to confirm</li>
+                            <li><strong>Click</strong> <span class="badge bg-secondary">Cancel</span> to abort</li>
+                        </ol>
+                        
+                        <div class="alert alert-danger mt-3">
+                            <h6><i class="bi bi-exclamation-triangle me-1"></i>Warning:</h6>
+                            <p class="mb-0">Deleting an event will permanently remove all associated data and cannot be undone.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="mb-4">
+        <button class="btn btn-outline-primary btn-sm" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- Managing Registrations Section -->
+    <section id="managing-registrations" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-4">
+            <i class="bi bi-people me-2"></i>Managing Registrations
+        </h2>
+
+        <div class="accordion" id="registrationsAccordion">
+            <!-- Viewing Event Details and Registrations -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="@GetButtonClass("viewingRegistrations")" type="button" @onclick="@(() => ToggleAccordion("viewingRegistrations"))">
+                        <i class="bi bi-eye me-2"></i>Viewing Event Details and Registrations
+                    </button>
+                </h2>
+                <div class="@GetCollapseClass("viewingRegistrations")">
+                    <div class="accordion-body">
+                        <ol>
+                            <li><strong>Click</strong> <span class="badge bg-info">View Details</span> on any event card</li>
+                            <li>This opens the <strong>Event Details</strong> page with complete information and registration list</li>
+                        </ol>
+                        
+                        <div class="alert alert-info mt-3">
+                            <h6><i class="bi bi-info-circle me-1"></i>What You'll See</h6>
+                            <ul class="mb-0">
+                                <li>Complete event information</li>
+                                <li>List of all registered attendees</li>
+                                <li>Registration statistics</li>
+                                <li>Attendance tracking status</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Adding a New Registration -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="@GetButtonClass("addingRegistration")" type="button" @onclick="@(() => ToggleAccordion("addingRegistration"))">
+                        <i class="bi bi-person-plus me-2"></i>Adding a New Registration
+                    </button>
+                </h2>
+                <div class="@GetCollapseClass("addingRegistration")">
+                    <div class="accordion-body">
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <h5>Steps to Add Registration</h5>
+                                <ol>
+                                    <li><strong>Navigate</strong> to the Event Details page</li>
+                                    <li><strong>Click</strong> <span class="badge bg-success">Add New Registration</span></li>
+                                    <li><strong>Fill in the registration form</strong></li>
+                                    <li><strong>Click</strong> <span class="badge bg-success">Submit Registration</span> to save</li>
+                                </ol>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0"><i class="bi bi-form me-1"></i>Registration Form Fields</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-unstyled mb-0">
+                                            <li class="mb-2"><strong>Name*</strong> (required)<br><small class="text-muted">Attendee's full name</small></li>
+                                            <li class="mb-2"><strong>Phone*</strong> (required)<br><small class="text-muted">Contact telephone number</small></li>
+                                            <li class="mb-2"><strong>Email*</strong> (required)<br><small class="text-muted">Valid email address</small></li>
+                                            <li class="mb-2"><strong>Notes</strong> (optional)<br><small class="text-muted">Additional registration notes</small></li>
+                                            <li><strong>Attended Event</strong><br><small class="text-muted">Check if person attended</small></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning mt-3">
+                            <h6><i class="bi bi-exclamation-triangle me-1"></i>Important Notes:</h6>
+                            <ul class="mb-0">
+                                <li>Fields marked with * are required</li>
+                                <li>Email addresses must be valid format</li>
+                                <li>Phone numbers should include area code</li>
+                                <li>You can mark attendance during or after registration</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="mb-4">
+        <button class="btn btn-outline-primary btn-sm" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- Troubleshooting Section -->
+    <section id="troubleshooting" class="mb-2">
+        <h2 class="border-bottom pb-2 mb-4">
+            <i class="bi bi-tools me-2"></i>Troubleshooting
+        </h2>
+
+        <div class="accordion" id="troubleshootingAccordion">
+            <!-- Common Issues -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="@GetButtonClass("commonIssues")" type="button" @onclick="@(() => ToggleAccordion("commonIssues"))">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Common Issues and Solutions
+                    </button>
+                </h2>
+                <div class="@GetCollapseClass("commonIssues")">
+                    <div class="accordion-body">
+                        <div class="alert alert-info">
+                            <h6>Cannot save event - validation errors</h6>
+                            <p>Ensure all required fields are completed and event date is not in the past.</p>
+                        </div>
+                        <div class="alert alert-warning">
+                            <h6>"Load More Events" button not working</h6>
+                            <p>Wait for current operations to complete or refresh the page.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="mb-4">
+        <button class="btn btn-outline-primary btn-sm" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="mb-5">
+        <h2 class="border-bottom pb-2 mb-4">
+            <i class="bi bi-question-circle me-2"></i>Frequently Asked Questions
+        </h2>
+
+        <div class="accordion" id="faqAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="@GetButtonClass("faq1")" type="button" @onclick="@(() => ToggleAccordion("faq1"))">
+                        How many events can I create?
+                    </button>
+                </h2>
+                <div class="@GetCollapseClass("faq1")">
+                    <div class="accordion-body">
+                        There is no specific limit to the number of events you can create.
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="@GetButtonClass("faq2")" type="button" @onclick="@(() => ToggleAccordion("faq2"))">
+                        Can I edit past events?
+                    </button>
+                </h2>
+                <div class="@GetCollapseClass("faq2")">
+                    <div class="accordion-body">
+                        Yes, you can edit events with past dates, but you cannot create new events with past dates.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Back to Top -->
+    <div class="text-center mb-4">
+        <button class="btn btn-outline-primary" @onclick="ScrollToTop">
+            <i class="bi bi-arrow-up me-1"></i>Back to Top
+        </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center py-4 border-top">
+        <div class="container">
+            <p class="text-muted mb-0">
+                <strong>EventEase User Manual</strong> - Version 1.0<br>
+                <small>This manual covers EventEase Version 1.0. Features may change in future versions.</small>
+            </p>
+        </div>
+    </footer>
+</div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+        }
+    }
+
+    private Dictionary<string, bool> accordionStates = new Dictionary<string, bool>
+    {
+        {"viewingEvents", false},
+        {"creatingEvents", false},
+        {"editingEvents", false},
+        {"deletingEvents", false},
+
+        {"viewingRegistrations", false},
+        {"addingRegistration", false},
+
+        {"commonIssues", false},
+        
+        {"faq1", false},
+        {"faq2", false}
+    };
+
+    private void ToggleAccordion(string key)
+    {
+        if (accordionStates.ContainsKey(key))
+        {
+            accordionStates[key] = !accordionStates[key];
+        }
+    }
+
+    private string GetCollapseClass(string key)
+    {
+        return accordionStates.GetValueOrDefault(key, false) ? "accordion-collapse collapse show" : "accordion-collapse collapse";
+    }
+
+    private string GetButtonClass(string key)
+    {
+        return accordionStates.GetValueOrDefault(key, false) ? "accordion-button" : "accordion-button collapsed";
+    }
+
+    private async Task ScrollToTop()
+    {
+        await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+    }
+
+}

@@ -1,0 +1,313 @@
+@*
+    ModalDialog Component
+    
+    Purpose: Provides a reusable Bootstrap modal dialog component with extensive customization options 
+    for confirmations, forms, and general content display.
+    
+    Features:
+    - Customizable modal sizes (Small, Default, Large, ExtraLarge, FullScreen)
+    - Configurable header with optional icons and custom styling
+    - Loading state support with spinner and custom loading text
+    - Footer with customizable confirm/cancel buttons or custom content
+    - Keyboard support (Escape key to close)
+    - Backdrop click handling with optional close behavior
+    - Accessibility features with proper ARIA attributes
+    - Event callbacks for show/hide/confirm/cancel actions
+    - Processing states with button loading indicators
+    
+    Modal Sizes:
+    - Small: Compact dialogs for simple confirmations
+    - Default: Standard size for most use cases
+    - Large: Extended content or forms
+    - ExtraLarge: Complex content requiring more space
+    - FullScreen: Full viewport coverage
+    
+    Customization Options:
+    - Header and footer styling classes
+    - Button text and styling customization
+    - Optional header icons
+    - Show/hide individual buttons
+    - Center vertically option
+    - Custom footer content via RenderFragment
+    
+    Dependencies:
+    - IJSRuntime: For body class manipulation and DOM interactions
+    - Bootstrap modal classes and JavaScript behaviors
+    - Font Awesome or Bootstrap icons for header icons
+    
+    Usage: Used throughout the application for confirmations, forms, help dialogs, and content display.
+*@
+
+@inject IJSRuntime JSRuntime
+
+@if (IsVisible)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-labelledby="modal-title-@_modalId"
+        aria-describedby="modal-body-@_modalId" @onkeydown="OnKeyDown" @onclick="OnBackdropClick"
+        @onclick:stopPropagation="false">
+
+        <div class="modal-dialog @SizeClass @CenterVerticallyClass" role="document" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header @HeaderClass">
+                    <h5 class="modal-title" id="modal-title-@_modalId">
+                        @if (!string.IsNullOrEmpty(HeaderIcon))
+                        {
+                            <i class="@HeaderIcon me-2"></i>
+                        }
+                        @Title
+                    </h5>
+                    @if (ShowCloseButton)
+                    {
+                        <button type="button" class="btn-close @(HeaderClass.Contains("text-white") ? "btn-close-white" : "")"
+                            @onclick="OnCancelClickedAsync" aria-label="Close"></button>
+                    }
+                </div>
+
+                <div class="modal-body" id="modal-body-@_modalId">
+                    @if (IsLoading)
+                    {
+                        <div class="text-center p-3">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 mb-0">@LoadingText</p>
+                        </div>
+                    }
+                    else
+                    {
+                        @ChildContent
+                    }
+                </div>
+
+                @if (!HideFooter && !IsLoading)
+                {
+                    <div class="modal-footer @FooterClass">
+                        @if (ShowCancelButton)
+                        {
+                            <button type="button" class="btn @CancelButtonClass" @onclick="OnCancelClickedAsync"
+                                disabled="@IsProcessing">
+                                @if (IsProcessing && ProcessingAction == "cancel")
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                @CancelText
+                            </button>
+                        }
+
+                        @if (ShowConfirmButton)
+                        {
+                            <button type="button" class="btn @ConfirmButtonClass" @onclick="OnConfirmClickedAsync"
+                                disabled="@IsProcessing">
+                                @if (IsProcessing && ProcessingAction == "confirm")
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                @ConfirmText
+                            </button>
+                        }
+
+                        @FooterContent
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Backdrop -->
+    <div class="modal-backdrop fade show" @onclick="OnBackdropClick"></div>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = "Confirm";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+
+    [Parameter] public string ConfirmText { get; set; } = "Confirm";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public bool ShowConfirmButton { get; set; } = true;
+    [Parameter] public bool ShowCancelButton { get; set; } = true;
+    [Parameter] public bool ShowCloseButton { get; set; } = true;
+
+    [Parameter] public string ConfirmButtonClass { get; set; } = "btn-primary";
+    [Parameter] public string CancelButtonClass { get; set; } = "btn-secondary";
+    [Parameter] public string HeaderClass { get; set; } = "";
+    [Parameter] public string FooterClass { get; set; } = "";
+    [Parameter] public string HeaderIcon { get; set; } = "";
+    [Parameter] public ModalSize Size { get; set; } = ModalSize.Default;
+    [Parameter] public bool CenterVertically { get; set; } = false;
+
+    [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+    [Parameter] public bool HideFooter { get; set; } = false;
+    [Parameter] public bool IsLoading { get; set; } = false;
+    [Parameter] public string LoadingText { get; set; } = "Loading...";
+
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnShow { get; set; }
+    [Parameter] public EventCallback OnHide { get; set; }
+
+    private bool IsVisible { get; set; }
+    private bool IsProcessing { get; set; }
+    private string ProcessingAction { get; set; } = "";
+    private readonly string _modalId = Guid.NewGuid().ToString("N")[..8];
+
+    public enum ModalSize
+    {
+        Small,
+        Default,
+        Large,
+        ExtraLarge,
+        FullScreen
+    }
+
+    private string SizeClass => Size switch
+    {
+        ModalSize.Small => "modal-sm",
+        ModalSize.Large => "modal-lg",
+        ModalSize.ExtraLarge => "modal-xl",
+        ModalSize.FullScreen => "modal-fullscreen",
+        _ => ""
+    };
+
+    private string CenterVerticallyClass => CenterVertically ? "modal-dialog-centered" : "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && IsVisible)
+        {
+            await JSRuntime.InvokeVoidAsync("document.body.classList.add", "modal-open");
+        }
+    }
+
+    public void Show()
+    {
+        IsVisible = true;
+        StateHasChanged();
+        _ = Task.Run(async () =>
+        {
+            await JSRuntime.InvokeVoidAsync("document.body.classList.add", "modal-open");
+            if (OnShow.HasDelegate)
+            {
+                await OnShow.InvokeAsync();
+            }
+        });
+    }
+
+    public void Hide()
+    {
+        IsVisible = false;
+        IsProcessing = false;
+        ProcessingAction = "";
+        StateHasChanged();
+        _ = Task.Run(async () =>
+        {
+            await JSRuntime.InvokeVoidAsync("document.body.classList.remove", "modal-open");
+            if (OnHide.HasDelegate)
+            {
+                await OnHide.InvokeAsync();
+            }
+        });
+    }
+
+    public async Task ShowAsync()
+    {
+        if (IsVisible) return;
+
+        IsVisible = true;
+        await JSRuntime.InvokeVoidAsync("document.body.classList.add", "modal-open");
+        StateHasChanged();
+
+        if (OnShow.HasDelegate)
+        {
+            await OnShow.InvokeAsync();
+        }
+    }
+
+    public async Task HideAsync()
+    {
+        if (!IsVisible) return;
+
+        IsVisible = false;
+        IsProcessing = false;
+        ProcessingAction = "";
+
+        await JSRuntime.InvokeVoidAsync("document.body.classList.remove", "modal-open");
+        StateHasChanged();
+
+        if (OnHide.HasDelegate)
+        {
+            await OnHide.InvokeAsync();
+        }
+    }
+
+    private async Task OnConfirmClickedAsync()
+    {
+        if (IsProcessing) return;
+
+        try
+        {
+            IsProcessing = true;
+            ProcessingAction = "confirm";
+            StateHasChanged();
+
+            if (OnConfirm.HasDelegate)
+            {
+                await OnConfirm.InvokeAsync();
+            }
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+        finally
+        {
+            if (IsVisible)
+            {
+                Hide();
+            }
+        }
+    }
+
+    private async Task OnCancelClickedAsync()
+    {
+        if (IsProcessing) return;
+
+        try
+        {
+            IsProcessing = true;
+            ProcessingAction = "cancel";
+            StateHasChanged();
+
+            if (OnCancel.HasDelegate)
+            {
+                await OnCancel.InvokeAsync();
+            }
+        }
+        finally
+        {
+            Hide();
+        }
+    }
+
+    private async Task OnBackdropClick()
+    {
+        if (CloseOnBackdropClick && !IsProcessing)
+        {
+            await OnCancelClickedAsync();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && CloseOnEscape && !IsProcessing)
+        {
+            await OnCancelClickedAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        _ = JSRuntime.InvokeVoidAsync("document.body.classList.remove", "modal-open");
+    }
+}

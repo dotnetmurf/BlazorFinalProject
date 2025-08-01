@@ -1,0 +1,382 @@
+@*
+    EventDetailsPage Component
+    
+    Purpose: Provides a comprehensive view of a single event with detailed information, registration 
+    management, and attendee tracking capabilities in the EventEase application.
+    
+    Features:
+    - Event information display with name, date, location, and notes
+    - Registration form for adding new participants to the event
+    - Paginated list of event registrations with load-more functionality
+    - Registration editing and deletion capabilities via RegistrationCard components
+    - Attendance tracking with counts of registered vs actual attendees
+    - Real-time statistics updates for registration and attendance metrics
+    - Help dialog with detailed usage instructions
+    - Navigation links back to events list and attendance pages
+    
+    Route Parameters:
+    - EventId (Guid): Required route parameter identifying the specific event to display
+    
+    Data Management:
+    - Loads event details and registrations on initialization
+    - Implements pagination for registration lists (4 items per page default)
+    - Preserves pagination state during updates and refreshes
+    - Syncs statistics with EventState service for cross-component consistency
+    - Handles registration form state through HybridRegistrationStateService
+    
+    User Interactions:
+    - Register for Event: Shows registration form for new participants
+    - Edit/Delete Registrations: Delegated to RegistrationCard components
+    - Load More: Expands registration list with additional pages
+    - Help System: Contextual help dialog with feature explanations
+    - Navigation: Links to related pages (events list, attendance)
+    
+    State Management:
+    - Tracks current page size and pagination state per event
+    - Manages form visibility and submission states
+    - Coordinates with state services for data consistency
+    - Handles loading states and error conditions
+    
+    Dependencies:
+    - IEventService: Event data retrieval
+    - IRegistrationService: Registration CRUD operations
+    - IHybridEventStateService: Event state management
+    - IHybridRegistrationStateService: Registration form state
+    - IJSRuntime: Scroll management and DOM interactions
+    - RegistrationForm: New registration creation
+    - RegistrationCard: Individual registration display and editing
+    - ModalDialog: Help dialog display
+    
+    Usage: Accessed via route `/events/details/{EventId:guid}` to view and manage specific event details
+    and registrations. Central hub for event-specific operations and participant management.
+*@
+
+@page "/events/details/{EventId:guid}"
+@inject IEventService EventService
+@inject IHybridEventStateService EventState
+@inject IRegistrationService RegistrationService
+@inject IHybridRegistrationStateService RegistrationState
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Event Details | Events Manager</PageTitle>
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h1 class="mb-2">
+            <i class="bi bi-calendar2-event me-2"></i>Event Details
+        </h1>
+        <a class="btn btn-secondary btn-sm mt-2" href="events">Back to Events</a>
+        <a class="btn btn-secondary btn-sm mt-2" href="attendance">Go to Attendance</a>
+    </div>
+    <button class="btn btn-outline-dark btn-sm" @onclick="ShowHelp">
+        <i class="bi bi-question-circle me-1"></i>Help
+    </button>
+</div>
+
+@if (eventDetails is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title">@eventDetails.Name</h4>
+            <h6 class="card-text"><strong>Date: </strong>@eventDetails.Date.ToLongDateString()</h6>
+            <p class="card-text"><strong>Location: </strong>@eventDetails.Location</p>
+            <p class="card-text">@eventDetails.Notes</p>
+        </div>
+    </div>
+
+    <button class="btn btn-success mb-3" @onclick="ShowRegistrationForm">Register for this Event</button>
+
+    @if (showForm)
+    {
+        <RegistrationForm Registration="newRegistration" OnValidSubmitCallback="SubmitRegistrationAsync"
+            OnCancelCallback="CancelRegistrationAsync" />
+    }
+    else
+    {
+        <h5 class="mt-4">Registered Participants: @registrationCount participants</h5>
+        <h5 class="mt-4">Participants Attended: @attendeeCount participants</h5>
+
+        @if (registrations?.Any() == true)
+        {
+            <div class="row row-cols-1 row-cols-md-2 g-3">
+                @foreach (var reg in registrations)
+                {
+                    <div class="col">
+                        <RegistrationCard Registration="reg" OnRegistrationUpdated="RefreshRegistrations" />
+                    </div>
+                }
+            </div>
+
+            @if (hasMoreRegistrations)
+            {
+                <div class="text-center mt-4">
+                    <button class="btn btn-outline-primary" @onclick="LoadMoreRegistrationsAsync" disabled="@isLoadingRegistrations">
+                        @if (isLoadingRegistrations)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        Load More Registrations (@(totalRegistrations - registrations.Count) remaining)
+                    </button>
+                </div>
+            }
+
+            <div class="text-center mt-2 text-muted">
+                <small>Showing @registrations.Count of @totalRegistrations registrations</small>
+            </div>
+        }
+        else if (isLoadingRegistrations)
+        {
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading registrations...</span>
+                </div>
+                <p class="mt-2">Loading registrations...</p>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">No registrations yet for this event.</p>
+        }
+    }
+}
+
+<ModalDialog @ref="helpDialog" Title="Help - Event Details" ShowConfirmButton="false" CancelText="Close"
+    OnCancel="CloseHelp">
+    <div class="help-content">
+        <h5><i class="bi bi-info-circle text-info me-2"></i>Event Details Functions</h5>
+        <hr />
+        <div class="mb-3">
+            <h6><i class="bi bi-person-plus text-success me-2"></i>Register for Event</h6>
+            <p class="text-muted mb-2">Click "Register for this Event" to add a new registration. Fill in participant
+                details including name, phone, and email.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-pencil text-warning me-2"></i>Edit Registration</h6>
+            <p class="text-muted mb-2">Use the "Edit" button on any registration card to modify participant details or
+                mark attendance.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-trash text-danger me-2"></i>Delete Registration</h6>
+            <p class="text-muted mb-2">Click "Delete" on a registration card to remove a participant from the event.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-check-circle text-success me-2"></i>Mark Attendance</h6>
+            <p class="text-muted mb-2">Toggle the "Attended Event" checkbox to track which participants actually
+                attended the event.</p>
+        </div>
+        <div class="mb-3">
+            <h6><i class="bi bi-arrow-down-circle text-secondary me-2"></i>Load More Registrations</h6>
+            <p class="text-muted mb-2">Registrations are loaded in batches. Use "Load More Registrations" to see
+                additional participants when available.</p>
+        </div>
+        <div class="mb-0">
+            <h6><i class="bi bi-people-fill text-info me-2"></i>Attendance Page</h6>
+            <p class="text-muted mb-0">View the total number of registered participants and how many actually attended
+                the event.</p>
+        </div>
+    </div>
+</ModalDialog>
+
+@code {
+    [Parameter]
+    public Guid EventId { get; set; }
+    private Event? eventDetails;
+    private List<Registration> registrations = new();
+    private bool showForm = false;
+    private Registration? newRegistration;
+
+    private bool isSubmitting = false;
+    private bool isCreatingNewRegistration = false;
+
+    private int registrationCount { get; set; }
+    private int attendeeCount { get; set; }
+
+    private int currentRegistrationPage = 1;
+    private int registrationPageSize = 4;
+    private int totalRegistrations = 0;
+    private bool isLoadingRegistrations = false;
+    private bool hasMoreRegistrations => registrations.Count < totalRegistrations;
+    private ModalDialog? helpDialog;
+
+    protected override async Task OnInitializedAsync()
+    {
+        eventDetails = await EventService.GetByIdAsync(EventId);
+        await LoadRegistrationsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("scrollToTopComplete");
+    }
+
+    private async Task LoadRegistrationsAsync(bool loadMore = false, bool preserveCurrentState = false, int?
+    requestedPageSize = null)
+    {
+        isLoadingRegistrations = true;
+        StateHasChanged();
+
+        try
+        {
+            if (preserveCurrentState && registrations.Any())
+            {
+                var itemsToLoad = registrations.Count;
+                var pagesToLoad = (int)Math.Ceiling((double)itemsToLoad / registrationPageSize);
+
+                var pagedResult = await RegistrationService.GetPagedForEventAsync(EventId, 1, itemsToLoad);
+                registrations = pagedResult.Items;
+                totalRegistrations = pagedResult.TotalCount;
+                currentRegistrationPage = pagesToLoad;
+
+                RegistrationState.CurrentRegistrationPageSizes[EventId] = registrations.Count;
+            }
+            else if (loadMore)
+            {
+                var nextPage = (int)Math.Ceiling((double)registrations.Count / registrationPageSize) + 1;
+                var pagedResult = await RegistrationService.GetPagedForEventAsync(EventId, nextPage, registrationPageSize);
+
+                registrations.AddRange(pagedResult.Items);
+                totalRegistrations = pagedResult.TotalCount;
+
+                currentRegistrationPage = (int)Math.Ceiling((double)registrations.Count / registrationPageSize);
+
+                RegistrationState.CurrentRegistrationPageSizes[EventId] = registrations.Count;
+            }
+            else if (requestedPageSize.HasValue)
+            {
+                var pagedResult = await RegistrationService.GetPagedForEventAsync(EventId, 1, requestedPageSize.Value);
+                registrations = pagedResult.Items;
+                totalRegistrations = pagedResult.TotalCount;
+
+                currentRegistrationPage = (int)Math.Ceiling((double)registrations.Count / registrationPageSize);
+
+                RegistrationState.CurrentRegistrationPageSizes[EventId] = registrations.Count;
+            }
+            else
+            {
+                var effectivePageSize = requestedPageSize ??
+                (RegistrationState.CurrentRegistrationPageSizes.ContainsKey(EventId) ?
+                RegistrationState.CurrentRegistrationPageSizes[EventId] : registrationPageSize);
+
+                currentRegistrationPage = 1;
+                var pagedResult = await RegistrationService.GetPagedForEventAsync(EventId, currentRegistrationPage, effectivePageSize);
+                registrations = pagedResult.Items;
+                totalRegistrations = pagedResult.TotalCount;
+
+                currentRegistrationPage = (int)Math.Ceiling((double)registrations.Count / registrationPageSize);
+
+                RegistrationState.CurrentRegistrationPageSizes[EventId] = registrations.Count;
+            }
+
+            registrationCount = totalRegistrations;
+            EventState.RegistrationCounts[EventId] = registrationCount;
+
+            var allRegistrations = await RegistrationService.GetAllForEventAsync(EventId);
+            attendeeCount = allRegistrations.Count(r => r.AttendedEvent == true);
+            EventState.AttendeeCounts[EventId] = attendeeCount;
+        }
+        finally
+        {
+            isLoadingRegistrations = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMoreRegistrationsAsync()
+    {
+        if (hasMoreRegistrations && !isLoadingRegistrations)
+        {
+            await LoadRegistrationsAsync(loadMore: true);
+        }
+    }
+
+    private async Task ShowRegistrationForm()
+    {
+        await RegistrationState.InitializeForNewRegistrationAsync(EventId);
+
+        newRegistration = new Registration
+        {
+            EventId = EventId,
+            AttendeeName = string.Empty,
+            Telephone = string.Empty,
+            EmailAddress = string.Empty,
+            Notes = string.Empty,
+            AttendedEvent = false
+        };
+
+        isCreatingNewRegistration = true;
+        showForm = true;
+    }
+
+    private async Task SubmitRegistrationAsync(Registration reg)
+    {
+        if (isSubmitting)
+        {
+            Console.WriteLine("Submission already in progress, ignoring duplicate call");
+            return;
+        }
+
+        try
+        {
+            isSubmitting = true;
+            Console.WriteLine($"Registration submitted successfully: {reg?.AttendeeName} (ID: {reg?.Id})");
+
+            if (isCreatingNewRegistration)
+            {
+                var currentItemCount = registrations.Count;
+                var newItemCount = currentItemCount + 1;
+
+                await LoadRegistrationsAsync(requestedPageSize: newItemCount);
+                isCreatingNewRegistration = false;
+            }
+            else
+            {
+                await LoadRegistrationsAsync(preserveCurrentState: true);
+            }
+
+            showForm = false;
+
+            Console.WriteLine("Registration process completed successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in post-submission processing: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task CancelRegistrationAsync()
+    {
+        await RegistrationState.ResetRegistrationFormAsync();
+        showForm = false;
+        isCreatingNewRegistration = false;
+    }
+
+    private async Task RefreshRegistrations()
+    {
+        await LoadRegistrationsAsync(preserveCurrentState: true);
+    }
+
+    private void ShowHelp()
+    {
+        helpDialog?.Show();
+    }
+
+    private void CloseHelp()
+    {
+        helpDialog?.Hide();
+    }
+}
